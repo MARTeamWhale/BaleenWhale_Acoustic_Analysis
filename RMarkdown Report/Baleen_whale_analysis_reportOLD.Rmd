@@ -1,0 +1,1512 @@
+---
+title: "Baleen Whale Acoustic Analysis Report"
+date: "Date created: `r format(Sys.time(), '%Y-%m-%d')`"
+output: 
+  word_document:
+    reference_docx: word_styles_reference_01.docx
+    fig_caption: TRUE
+format: "pipe"
+
+params:
+  deployment: ""
+  metadata: ""
+  missing_data: 
+  missing_data_start: 
+  missing_data_end: 
+always_allow_html: TRUE
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE) # sets global defaults
+
+# load packages
+
+library(pacman)
+pacman::p_load(here, tidyverse, lubridate, readxl, kableExtra, tinytex, flextable, RColorBrewer,xlsx,crul,stringr,readr)
+
+# set dplyr not to display 'summarise' messages
+
+options(dplyr.summarise.inform = FALSE)
+
+# deployment name in metadata uses "-" instead of "_" 
+
+deploymentm<-str_replace_all(params$deployment, "_", "-")
+
+# input metadata
+
+metadata<-read_csv(here("R code", "RMarkdown Report", "metadata", paste(params$metadata)))
+
+# input data: presence table
+csv_data<-read_csv(here("Results", params$deployment, paste(params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep="")))
+
+# clean up and summarize csv data
+
+annotation_data<-csv_data %>%
+  
+  # parse dates, rename columns of interest, drop unneeded columns
+  transmute(filedate = as_date(as.character(`Start date and time (UTC)`)), 
+            species = Species, callcat = V25, calltype = `Call type`) %>% 
+  
+  # filter rows where species is unknown/uncertain
+  mutate(unknownSp = startsWith(as.character(species),"UN")) %>% 
+  filter(unknownSp =="FALSE") %>%
+  
+  # replace NA with 'none' so that it is treated as a factor level
+  mutate(calltype = fct_explicit_na(calltype, na_level = "none")) %>%
+  
+  # bin by day and species/callcat/calltype combination
+  group_by(filedate, species, callcat, calltype) %>%
+  summarise() %>% 
+  ungroup() 
+
+# create named list of possible baleen whale species/call groups that may occur in data
+spcallgroup_list <- c("BW_IF_all","BW_A_all","FW_IS_D","SW_FF_all","HB_all")
+spcallgroup_label <- c("Blue whale (A/B/AB calls)","Blue whale (arch/downsweep calls)","Fin whale (20Hz calls)",
+                   "Sei whale (full frequency downsweep calls)", "Humpback whale (all calls)")
+names(spcallgroup_list) <-spcallgroup_label
+
+```
+
+
+```{r daily presence}
+
+# set up metadata
+
+deployment_metadata <- metadata %>%
+  
+  # select relevant deployment
+  filter(Deployment==deploymentm) %>% 
+  
+  # set up latitude and longitude for cleaner output, format as numeric
+  mutate(Latitude = format(Latitude, digits=4), Longitude = format(Longitude, digits=4)) %>% 
+  mutate(Latitude = as.numeric(Latitude), Longitude = as.numeric(Longitude)) %>% 
+  
+  # parse dates and drop unneeded columns: start is first full recording day, end is last full recording day
+  transmute(Deployment, Latitude, Longitude, start = as_date(`In-water_start`)+1, 
+         end = as_date(`In-water_end`)-1) %>% 
+  
+  # get day of year for start and end, calculate number of days with effort
+  mutate(start_day = yday(start), start_year = year(start), 
+         end_day = yday(end), end_year = year(end),
+         ndays = as.numeric(end - start+1))
+
+# account for missing data if needed
+
+if (params$missing_data){
+  
+  subdays <- as.numeric((params$missing_data_end - params$missing_data_start)+1)
+  deployment_metadata <- deployment_metadata %>% 
+    mutate(ndays = ndays-subdays)
+  
+  }
+
+# sort out species/call groups
+
+presence_data<-annotation_data %>% 
+  mutate(spcallgroup = case_when(species=='BW' & callcat=='IF' ~ 'BW_IF_all',
+                                 species=='BW' & callcat=='A' ~ 'BW_A_all',
+                                 species=='FW' & callcat=='IS' ~ 'FW_IS_D',
+                                 species=='SW' & callcat=='FF' ~ 'SW_FF_all',
+                                 species=='HB' ~ 'HB_all')) %>%
+  
+  # remove rows that were not assigned a spcallgroup above
+  drop_na(spcallgroup) %>% 
+  
+  # bin presence of each spcallgroup by day
+  group_by(filedate, species, spcallgroup) %>%
+  summarise() %>%
+  ungroup() %>% 
+  
+  # remove days not included in effort (based on full 24-hour recordings)
+  filter(filedate>=deployment_metadata$start) %>% 
+  filter(filedate<=deployment_metadata$end) %>% 
+
+  # add columns for year, month, and day of year
+  mutate(year = factor(year(filedate))) %>%
+  mutate(month = month(filedate)) %>% 
+  mutate(day_of_year = lubridate::yday(filedate)) %>%
+  
+  # filter for spcallgroups of interest
+  filter(spcallgroup %in% spcallgroup_list) %>%
+  
+  # add all spcallgroups of interest as factor levels
+  mutate(spcallgroup = fct_expand(factor(spcallgroup), spcallgroup_list)) %>%  
+  
+  # rename factor levels
+  mutate(spcallgroup = fct_recode(spcallgroup, !!!spcallgroup_list))
+
+```
+
+This report summarizes daily presence of baleen whale calls in the **`r deployment_metadata$Deployment`** dataset, deployed at `r deployment_metadata$Latitude`°N `r abs(deployment_metadata$Longitude)`°W and analyzed from `r deployment_metadata$start` to `r deployment_metadata$end` (`r deployment_metadata$ndays` days`r if(params$missing_data){paste0(", not including ", subdays, " days of missing data")}`).  
+
+## Daily Presence Summary 
+
+
+```{r daily_summary_table}
+
+# summarize results for table
+daily_summary<-presence_data %>% 
+  group_by(spcallgroup) %>% 
+  summarize(days_present = n()) %>%  
+  mutate(percent_days_present = days_present/deployment_metadata$ndays*100) %>% 
+  ungroup()
+
+# specify column names
+daily_col_names<-c("Species (call type) ", "Days present (#)", "Days present (%)")
+
+# create table
+daily_summary %>% 
+  mutate_if(is.numeric, format, digits=2) %>% 
+  flextable() %>% 
+  set_header_df(mapping = data.frame(keys = colnames(daily_summary), values = daily_col_names, 
+                                     stringsAsFactors = FALSE), key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+  
+```
+\
+```{r fig1, fig.width=6.5, fig.cap="Daily presence of baleen whale calls"}
+#add noise
+noise_data<-csv_data %>%
+  
+  # parse dates, rename columns of interest, drop unneeded columns
+  transmute(filedate = as_date(as.character(`Start date and time (UTC)`)), 
+            species = Species, callcat = V25, calltype = `Call type`) %>% 
+  filter(species %in% c("NC","NN")& callcat!="QT") %>%
+  select(filedate,species) %>% 
+  mutate(species = "NN") %>% 
+  group_by(filedate,species) %>%
+  summarise() %>%
+  ungroup() %>% 
+  mutate(spcallgroup = '') %>% 
+  
+  # remove days not included in effort (based on full 24-hour recordings)
+  filter(filedate>=deployment_metadata$start) %>% 
+  filter(filedate<=deployment_metadata$end) %>% 
+  
+  # add columns for year, month, and day of year
+  mutate(year = factor(year(filedate))) %>%
+  mutate(month = month(filedate)) %>% 
+  mutate(day_of_year = lubridate::yday(filedate))
+
+
+# assign colors to species for plotting
+#cols=c("#F8766D","#00BA38","#E76BF3","#619CFF")
+#cols2 = brewer.pal(n = 5, name = "Dark2")
+cols2 = c("#A6CEE3", "#1F78B4","#7570B3", "#E7298A", "#66A61E")
+names(cols2) <- levels(presence_data$spcallgroup)
+
+# set up missing data per year based on deployment metadata (for day of year axis)
+no_data_periods <- tibble(starts = c(1, deployment_metadata$end_day+1),
+                          ends = c(deployment_metadata$start_day-1, 366),
+                          year = as_factor(c(deployment_metadata$start_year,
+                                             deployment_metadata$end_year))) 
+
+# if missing_data = TRUE, add additional missing data period
+if (params$missing_data) {
+  no_data_periods<-no_data_periods %>% 
+    add_row(starts = yday(params$missing_data_start),
+            ends = yday(params$missing_data_end),
+            year = as_factor(year(params$missing_data_start)),
+            start_dates = params$missing_data_start,
+            end_dates = params$missing_data_end)
+}
+            
+
+# create daily presence figure  
+ggplot() +
+  
+  facet_wrap(~year, ncol=1) +
+  
+  # plot missing data periods using single geom_rect call - do this first so that years are in correct order
+  geom_rect(data=no_data_periods, aes(xmin=starts,xmax=ends,ymin=-Inf, ymax=Inf), 
+            fill = "grey50", colour = NA, alpha = 0.2) +
+   
+   #plot noise
+  geom_tile(data=noise_data, aes(x=day_of_year, y=spcallgroup), height=Inf,
+            fill = "gold", colour = NA, alpha = 0.2)+
+  
+  # plot species daily presence
+  geom_tile(data=presence_data,aes(x=day_of_year, y=spcallgroup, fill = spcallgroup), height=0.75) + 
+  
+  # format plot
+  theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),axis.title.y=element_blank(),
+        panel.grid.minor = element_blank(), 
+        panel.grid.major.y= element_blank(), 
+        panel.grid.major.x = element_blank(),
+        panel.background = element_rect(fill= "white", colour = "grey50"),
+        axis.text = element_text(size = 12), 
+        axis.text.x = element_text(angle = 0, vjust=0, hjust=-0.5),
+        axis.title.x = element_blank(),
+        strip.text.x = element_text(size = 12,face = "bold"), 
+        strip.background =element_rect(fill="white", colour = "black"),
+        panel.border = element_rect(fill = NA, colour = "black"),
+        plot.margin = margin(0.1,0.1,0.1,0.1,"cm"),
+        legend.position = "bottom",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.margin=margin(t=-10)) +
+  
+  # format x axis breaks by month
+  scale_x_continuous(expand=c(0,0), limits=c(0, 367),
+                     breaks = c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335),
+                     labels = c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')) +
+  
+  # set y axis direction to match legend
+  scale_y_discrete(limits = rev) +
+  
+  # format fill colors and legend
+   scale_fill_manual(values = cols2,
+                       name="",
+                       drop = T) +
+  
+  guides(fill=guide_legend(ncol=2)) +
+  
+  xlab("")
+
+```
+\
+\
+**Figure 1:** Daily presence of baleen whale calls in the `r deployment_metadata$Deployment` dataset. Yellow shading indicates the annotated presence of anthropogenic noise (i.e., seismic pulses, vessel noise, mooring noise, etc.).
+\
+\
+```{r fig2, fig.width=5, fig.height=6, fig.cap="Weekly presence of baleen whale calls"}
+
+
+# get number of effort days per week from deployment metadata
+weekly_effort <- tibble(effort_date = seq.Date(deployment_metadata$start,
+                           deployment_metadata$end,by=1)) %>% 
+  mutate(year = factor(year(effort_date))) %>%
+  mutate(weekstart = floor_date(effort_date, "weeks")) %>% 
+  group_by(year, weekstart) %>% 
+  summarise(days_effort = n()) %>% 
+  ungroup()
+
+# set up missing data per year based on deployment metadata (for date axis)
+no_data_periods2 <- tibble(year = as_factor(c(deployment_metadata$start_year,
+                                             deployment_metadata$end_year)),
+                           startdates = c(as.Date(paste0(deployment_metadata$start_year, "-01-01")), deployment_metadata$end),
+                           enddates = c(deployment_metadata$start-1, as.Date(paste0(deployment_metadata$end_year, "-12-31"))))
+
+# get presence days per week and join with effort
+days_per_week <- presence_data %>% 
+  mutate(weekstart = floor_date(filedate, "weeks")) %>% 
+  group_by(spcallgroup, year, weekstart) %>% 
+  summarise(days_present = n()) %>% 
+  left_join(weekly_effort,by=c("year","weekstart")) %>% 
+  mutate(proportion_days_present = days_present/days_effort) %>% 
+  ungroup()
+
+#get weekly noise
+noise_per_week <- noise_data %>% 
+  mutate(weekstart = floor_date(filedate,"weeks")) %>% 
+  group_by(spcallgroup, year, weekstart) %>% 
+  mutate(days_present = 7) %>% 
+  full_join(weekly_effort,by=c("year","weekstart")) %>% 
+  mutate(proportion_days_present = days_present/days_effort) %>% 
+  ungroup() %>% 
+  select(year,weekstart,days_present,days_effort,proportion_days_present)
+
+# create weekly presence figure
+ggplot() +
+  
+  #plot noise
+  geom_tile(data=noise_per_week, aes(x=weekstart, y=days_present), height=Inf,
+            fill = "gold", colour = NA, alpha = 0.1, width=7)+
+  
+  # facet by species 
+  facet_wrap(~spcallgroup, ncol = 1) + 
+  
+  # add no data periods 
+  geom_rect(data = no_data_periods2, aes(xmin = startdates, xmax = enddates, ymin = -Inf, ymax = Inf),
+            fill = "grey50", colour = NA, alpha = 0.2) +
+  
+  # add bar plot of number of days per week
+  geom_col(data = days_per_week, aes(x = weekstart, y = days_present, fill = spcallgroup), 
+           show.legend = F, width=4) + 
+  
+  # format fill colors and legend
+   scale_fill_manual(values = cols2,
+                       name="Species/call type",
+                       drop = T) +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,7)) +
+  
+  scale_x_date(date_label="%b %Y", expand = c(0,0)) +
+  
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major =element_blank(),
+        panel.background = element_rect(fill= "white", colour = "grey50"), 
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 11, face = "bold"),
+        strip.text.x = element_text(size = 11, face = "bold"), 
+        strip.background =element_rect(fill="white", colour = "grey50"), 
+        panel.border = element_rect(fill = NA, colour = "grey60"),
+        plot.margin = margin(0.5,0.5,0.5,0.5,"cm")) + 
+  
+  xlab("") + 
+  
+  ylab("Days per week")
+  
+```
+\
+**Figure 2:** Number of days per week with baleen whale call presence in the `r deployment_metadata$Deployment` dataset. Yellow shading indicates the annotated presence of anthropogenic noise (i.e., seismic pulses, vessel noise, mooring noise, etc.).
+\
+
+## Detector Performance
+\
+These are summary tables of the LFDCS detector performance for `r deployment_metadata$Deployment` at the file and daily level, for both detection tiers, for each species. **Note:** Recall values are calculated based on files and days opened as part of the presence analysis of the other species.
+\
+\
+\
+**Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$Deployment` dataset.
+```{r detector_performance_table_file}
+Detections <- read_csv(here('Validation',params$deployment,'ArkLite Inputs',paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)
+
+detections_file <-Detections %>%
+  mutate(filename=Filename) %>% 
+  mutate(BW3 = case_when((Species=="Bm" & MD3 >0)~1,TRUE~0),
+         BW4 = case_when((Species=="Bm" & MD4 >0)~1,TRUE~0),
+         FW2 = case_when((Species=="Bp" & MD2 >0)~1,TRUE~0),
+         FW3 = case_when((Species=="Bp" & MD3 >0)~1,TRUE~0),
+         SW2 = case_when((Species=="Bb" & MD2 >0)~1,TRUE~0),
+         SW4 = case_when((Species=="Bb" & MD4 >0)~1,TRUE~0),
+         HB2 = case_when((Species=="Mn" & MD2 >0)~1,TRUE~0),
+         HB3 = case_when((Species=="Mn" & MD3 >0)~1,TRUE~0)) %>%
+  select(!c(Species,MD2, MD3, MD4)) %>%
+  group_by(filename) %>%
+  summarize(BW3 = sum(BW3), BW4 = sum(BW4),FW2 = sum(FW2), FW3=sum(FW3), 
+            SW2= sum(SW2), SW4= sum(SW4), HB2=sum(HB2), HB3=sum(HB3)) %>%
+  ungroup()
+
+annotations_files <- csv_data %>%
+  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
+  mutate(BW = case_when(Species=='BW' & V25=='IF'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         FW = case_when(Species=='FW' & V25=='IS'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         SW = case_when(Species=='SW' & V25=='FF'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         HB = case_when(Species=="HB"~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0)) %>%
+  select(!Species) %>%
+  group_by(filename) %>%
+  summarize(BW = sum(BW), FW = sum(FW), SW= sum(SW), HB=sum(HB)) %>%
+  ungroup()
+
+FileLFDCS <- left_join(detections_file, annotations_files, by ="filename") %>% 
+  na.omit()
+
+#make empty data frame to add results to
+
+TableFileLFDCS <- data.frame(matrix(nrow=8, ncol=6, 0))
+dimnames(TableFileLFDCS)=list(c("BW3","BW4","FW2","FW3","SW2","SW4","HB2","HB3"),c("Poriginal","Roriginal","MCCoriginal","Nfiles","NfileswAnn","Nfileswdetec"))
+
+#BW3 #
+temp <-FileLFDCS
+Threshold<-max(temp$BW3)      #insert detection name
+autoDetect<-temp$BW3       #insert detection name
+verified<-temp$BW        #intsert verified name
+TableFileLFDCS['BW3','Nfiles']<-nrow(temp)
+TableFileLFDCS['BW3','NfileswAnn']<-sum(verified>0)
+TableFileLFDCS['BW3','Nfileswdetec']<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftBWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftBWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftBWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftBWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftBWJ[3,k]<-MCC
+  
+  dftBWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftBWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1]
+TableFileLFDCS['BW3',"Poriginal"]<-Porig 
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS['BW3',"Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS['BW3',"MCCoriginal"]<-MCCorig
+
+
+#BW4 #
+temp <-FileLFDCS
+# temp<-tempa[tempa$BW!=2,] #get rid of 2s in verified insert verified name
+Threshold<-max(temp$BW4)      #insert detection name
+autoDetect<-temp$BW4       #insert detection name
+verified<-temp$BW        #intsert verified name
+TableFileLFDCS['BW4','Nfiles']<-nrow(temp)
+TableFileLFDCS['BW4','NfileswAnn']<-sum(verified>0)
+TableFileLFDCS['BW4','Nfileswdetec']<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftBWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftBWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftBWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftBWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftBWJ[3,k]<-MCC
+  
+  dftBWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftBWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["BW4","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["BW4","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["BW4","MCCoriginal"]<-MCCorig
+
+
+#FW2 #
+Threshold<-max(temp$FW2)      #insert detection name
+autoDetect<-temp$FW2       #insert detection name
+verified<-temp$FW        #intsert verified name
+TableFileLFDCS["FW2","Nfiles"]<-nrow(temp) 
+TableFileLFDCS["FW2","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["FW2","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftFWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftFWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftFWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftFWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftFWJ[3,k]<-MCC
+  
+  dftFWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftFWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1]
+TableFileLFDCS["FW2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["FW2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["FW2","MCCoriginal"]<-MCCorig
+
+#FW3 #
+Threshold<-max(temp$FW3)      #insert detection name
+autoDetect<-temp$FW3       #insert detection name
+verified<-temp$FW        #intsert verified name
+TableFileLFDCS["FW3","Nfiles"]<-nrow(temp) 
+TableFileLFDCS["FW3","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["FW3","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftFWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftFWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftFWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftFWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftFWJ[3,k]<-MCC
+  
+  dftFWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftFWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["FW3","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["FW3","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["FW3","MCCoriginal"]<-MCCorig
+
+#SW2 #
+
+Threshold<-max(temp$SW2)      #insert detection name
+autoDetect<-temp$SW2        #insert detection name
+verified<-temp$SW        #intsert verified name
+TableFileLFDCS["SW2","Nfiles"]<-nrow(temp) 
+TableFileLFDCS["SW2","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["SW2","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftsWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftsWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftsWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftsWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftsWJ[3,k]<-MCC
+  
+  dftsWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftsWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["SW2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["SW2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["SW2","MCCoriginal"]<-MCCorig
+
+# SW4 #
+
+Threshold<-max(temp$SW4)      #insert detection name
+autoDetect<-temp$SW4       #insert detection name
+verified<-temp$SW        #intsert verified name
+TableFileLFDCS["SW4","Nfiles"]<-nrow(temp) 
+TableFileLFDCS["SW4","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["SW4","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftsWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftsWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftsWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftsWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftsWJ[3,k]<-MCC
+  
+  dftsWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftsWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["SW4","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["SW4","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["SW4","MCCoriginal"]<-MCCorig
+
+# HB2 #
+
+Threshold<-max(temp$HB2)      #insert detection name
+autoDetect<-temp$HB2       #insert detection name
+verified<-temp$HB        #intsert verified name
+TableFileLFDCS["HB2","Nfiles"]<-nrow(temp)
+TableFileLFDCS["HB2","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["HB2","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftHBJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftHBJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftHBJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftHBJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftHBJ[3,k]<-MCC
+  
+  dftsWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftHBJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["HB2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["HB2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["HB2","MCCoriginal"]<-MCCorig
+
+# HB3 #
+
+Threshold<-max(temp$HB3)      #insert detection name
+autoDetect<-temp$HB3       #insert detection name
+verified<-temp$HB        #intsert verified name
+TableFileLFDCS["HB3","Nfiles"]<-nrow(temp)
+TableFileLFDCS["HB3","NfileswAnn"]<-sum(verified>0)
+TableFileLFDCS["HB3","Nfileswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftHBJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftHBJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftHBJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftHBJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftHBJ[3,k]<-MCC
+  
+  dftsWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftHBJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableFileLFDCS["HB3","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableFileLFDCS["HB3","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableFileLFDCS["HB3","MCCoriginal"]<-MCCorig
+
+## create table
+# specify column names
+file_names_old<- c("Species/Tier","Poriginal","Roriginal","MCCoriginal","Nfiles","NfileswAnn","Nfileswdetec") 
+file_names_new <- c("Species/Tier","Precision","Recall","MCC Score","n Files","n Files w/Annotations", "n Files w/Detections")
+
+TableFileLFDCS %>% 
+  rownames_to_column(var="Species/Tier") %>% 
+  as_tibble() %>% 
+  mutate_if(is.numeric, format, digits=2) %>% 
+  rename_at(vars(file_names_old),~file_names_new) %>% 
+  flextable() %>% 
+#  set_header_df(mapping = data.frame(keys = colnames(TableFileLFDCS), values = file_col_names, 
+#                                    stringsAsFactors = FALSE), key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+```
+\
+**Table 2:** LFDCS detector performance per day, per tier, for each species for the `r deployment_metadata$Deployment` dataset.
+```{r detector_performance_table_day}
+detections_day <-Detections %>%
+#  mutate(filename=Filename) %>% 
+  mutate(BW3 = case_when((Species=="Bm" & MD3 >0)~TRUE,
+                         TRUE~0),
+         BW4 = case_when((Species=="Bm" & MD4 >0)~TRUE,
+                         TRUE~0),
+         FW2 = case_when((Species=="Bp" & MD2 >0)~TRUE,
+                         TRUE~0),
+         FW3 = case_when((Species=="Bp" & MD3 >0)~TRUE,
+                         TRUE~0),
+         SW2 = case_when((Species=="Bb" & MD2 >0)~TRUE,
+                         TRUE~0),
+         SW4 = case_when((Species=="Bb" & MD4 >0)~TRUE,
+                         TRUE~0),
+         HB2 = case_when((Species=="Mn" & MD2 >0)~TRUE,
+                         TRUE~0),
+         HB3 = case_when((Species=="Mn" & MD3 >0)~TRUE,
+                         TRUE~0)) %>%
+  select(!c(Species,MD2, MD3, MD4)) %>%
+  group_by(Filename) %>%
+  summarize(BW3 = sum(BW3), BW4 = sum(BW4),FW2 = sum(FW2), FW3=sum(FW3), 
+            SW2= sum(SW2), SW4= sum(SW4), HB2=sum(HB2), HB3=sum(HB3)) %>%
+  ungroup() %>%
+  mutate(datestring = str_sub(Filename, start = -20, end = -13)) %>%
+  mutate(Date = as_date(datestring, format="%Y%m%d"))%>%
+  drop_na() %>%
+  group_by(Date)%>%
+  summarize(BW3 = sum(BW3), BW4 = sum(BW4),FW2 = sum(FW2), FW3=sum(FW3), 
+            SW2= sum(SW2), SW4= sum(SW4), HB2=sum(HB2), HB3=sum(HB3)) %>%
+  ungroup()%>%
+  complete(Date = seq.Date(deployment_metadata$start,deployment_metadata$end, by="day"),fill=list(BW3=0,BW4=0, FW2=0, FW3=0, SW2=0, SW4=0, HB2=0, HB3=0))
+
+annotations_day <- csv_data %>%
+  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
+  mutate(BW = case_when(Species=='BW' & V25=='IF'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         FW = case_when(Species=='FW' & V25=='IS'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         SW = case_when(Species=='SW' & V25=='FF'~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0),
+         HB = case_when(Species=="HB"~1,
+                        is.na(Species)~ NA_real_,
+                        TRUE~0)) %>%
+  select(!Species) %>%
+  group_by(filename) %>%
+  summarize(BW = sum(BW), FW = sum(FW), SW= sum(SW), HB=sum(HB)) %>%
+  ungroup() %>% 
+  mutate(datestring = str_sub(filename, start = -20, end = -13)) %>%
+  mutate(Date = as_date(datestring, format="%Y%m%d"))%>%
+  drop_na() %>%
+  group_by(Date)%>%
+  summarize(BW = sum(BW), FW = sum(FW), SW= sum(SW), HB=sum(HB)) %>%
+  ungroup()%>%
+  complete(Date = seq.Date(deployment_metadata$start,deployment_metadata$end, by="day"),fill=list(BW=0, FW=0, SW=0, HB=0)) %>% 
+  mutate(BW = case_when(BW >0 ~1,TRUE~0),
+         FW = case_when(FW>0~1,TRUE~0),
+         SW = case_when(SW>0~1,TRUE~0),
+         HB = case_when(HB >0~1,TRUE~0))
+
+DayLFDCS <- left_join(detections_day, annotations_day, by ="Date") %>% 
+  na.omit()
+
+#make empty data frame to add results to
+TableDayLFDCS <- data.frame(matrix(nrow=8, ncol=6, 0))
+dimnames(TableDayLFDCS)=list(c("BW3","BW4","FW2","FW3","SW2","SW4","HB2","HB3"),c("Poriginal","Roriginal","MCCoriginal","NDays","NDayswAnn","NDayswdetec"))
+
+
+
+###BW3 ###
+temp <-DayLFDCS
+Threshold<-max(temp$BW3)      #insert detection name
+autoDetect<-temp$BW3       #insert detection name
+verified<-temp$BW        #intsert verified name
+TableDayLFDCS['BW3','NDays']<-nrow(temp)
+TableDayLFDCS['BW3','NDayswAnn']<-sum(verified>0)
+TableDayLFDCS['BW3','NDayswdetec']<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftBWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftBWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftBWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftBWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftBWJ[3,k]<-MCC
+  
+  dftBWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftBWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1]
+TableDayLFDCS['BW3',"Poriginal"]<-Porig 
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS['BW3',"Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS['BW3',"MCCoriginal"]<-MCCorig
+
+
+###BW4 ###
+temp <-DayLFDCS
+Threshold<-max(temp$BW4)      #insert detection name
+autoDetect<-temp$BW4       #insert detection name
+verified<-temp$BW        #intsert verified name
+TableDayLFDCS['BW4','NDays']<-nrow(temp)
+TableDayLFDCS['BW4','NDayswAnn']<-sum(verified>0)
+TableDayLFDCS['BW4','NDayswdetec']<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftBWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftBWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftBWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftBWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftBWJ[3,k]<-MCC
+  
+  dftBWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftBWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["BW4","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["BW4","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["BW4","MCCoriginal"]<-MCCorig
+
+###FW2 ###
+Threshold<-max(temp$FW2)      #insert detection name
+autoDetect<-temp$FW2       #insert detection name
+verified<-temp$FW        #intsert verified name
+TableDayLFDCS["FW2","NDays"]<-nrow(temp) 
+TableDayLFDCS["FW2","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["FW2","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftFWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftFWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftFWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftFWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftFWJ[3,k]<-MCC
+  
+  dftFWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftFWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1]
+TableDayLFDCS["FW2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["FW2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["FW2","MCCoriginal"]<-MCCorig
+
+###FW3 ###
+Threshold<-max(temp$FW3)      #insert detection name
+autoDetect<-temp$FW3       #insert detection name
+verified<-temp$FW        #intsert verified name
+TableDayLFDCS["FW3","NDays"]<-nrow(temp) 
+TableDayLFDCS["FW3","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["FW3","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftFWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftFWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftFWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftFWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftFWJ[3,k]<-MCC
+  
+  dftFWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftFWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["FW3","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["FW3","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["FW3","MCCoriginal"]<-MCCorig
+
+### SW2 ###
+
+Threshold<-max(temp$SW2)      #insert detection name
+autoDetect<-temp$SW2        #insert detection name
+verified<-temp$SW        #intsert verified name
+TableDayLFDCS["SW2","NDays"]<-nrow(temp) 
+TableDayLFDCS["SW2","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["SW2","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftSWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftSWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftSWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftSWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftSWJ[3,k]<-MCC
+  
+  dftSWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftSWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["SW2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["SW2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["SW2","MCCoriginal"]<-MCCorig
+
+### SW4 ###
+
+Threshold<-max(temp$SW4)      #insert detection name
+autoDetect<-temp$SW4       #insert detection name
+verified<-temp$SW        #intsert verified name
+TableDayLFDCS["SW4","NDays"]<-nrow(temp) 
+TableDayLFDCS["SW4","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["SW4","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftSWJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftSWJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftSWJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftSWJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftSWJ[3,k]<-MCC
+  
+  dftSWJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftSWJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["SW4","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["SW4","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["SW4","MCCoriginal"]<-MCCorig
+
+### HB2 ###
+
+Threshold<-max(temp$HB2)      #insert detection name
+autoDetect<-temp$HB2       #insert detection name
+verified<-temp$HB        #intsert verified name
+TableDayLFDCS["HB2","NDays"]<-nrow(temp)
+TableDayLFDCS["HB2","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["HB2","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftHBJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftHBJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftHBJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftHBJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftHBJ[3,k]<-MCC
+  
+  dftHBJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftHBJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["HB2","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["HB2","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["HB2","MCCoriginal"]<-MCCorig
+
+### HB3 ###
+
+Threshold<-max(temp$HB3)      #insert detection name
+autoDetect<-temp$HB3       #insert detection name
+verified<-temp$HB        #intsert verified name
+TableDayLFDCS["HB3","NDays"]<-nrow(temp)
+TableDayLFDCS["HB3","NDayswAnn"]<-sum(verified>0)
+TableDayLFDCS["HB3","NDayswdetec"]<-sum(autoDetect>0)
+
+#make empty matrix dft to fill with P R and F for every possible threshold
+dftHBJ = matrix(nrow=4, ncol=Threshold, 0)
+dimnames(dftHBJ)=list(c("Precision","Recall","MCCscore","Threshold"),c(1:Threshold))
+
+#for every threshold calculate P R and MCC and add to empty matrix dft
+TN=0
+
+for (l in 1:nrow(temp)){
+  if (((autoDetect[l]==0 & verified[l]==0)=="TRUE")){
+    TN<-TN+1}}
+for (k in 1:Threshold){
+  
+  FP=0
+  TP=0
+  FN=0
+  
+  for (l in 1:nrow(temp)){
+    if ((autoDetect[l]>=k)=="TRUE"){
+      if ((autoDetect[l]>0 & verified[l]>0)=="TRUE"){
+        TP<-TP+1}
+      else if (((autoDetect[l]>0 & verified[l]==0)=="TRUE")){
+        FP<-FP+1}}
+    else if (((autoDetect[l]<k & verified[l]>0)=="TRUE")){
+      FN<-FN+1}}
+  
+  
+  P<-TP/(TP+FP)
+  dftHBJ[1,k]<-P
+  
+  R<-TP/(TP+FN)
+  R[is.nan(R)] <-0
+  dftHBJ[2,k]<-R
+  
+  MCC <- ((TP*TN)-(FP*FN))/ sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  MCC[is.nan(MCC)] <-0
+  dftHBJ[3,k]<-MCC
+  
+  dftHBJ[4,k]<-k
+  
+}
+
+temp2<-as.data.frame(t(dftHBJ)) #make data frame of matrix dft and transpose it
+temp3<-temp2[complete.cases(temp2), ]#remove NaNs
+
+Porig<-temp3[which.min(temp3$Threshold),1] 
+TableDayLFDCS["HB3","Poriginal"]<-Porig
+
+Rorig<-temp3[which.min(temp3$Threshold),2]
+TableDayLFDCS["HB3","Roriginal"]<-Rorig
+
+MCCorig<-temp3[which.min(temp3$Threshold),3]
+TableDayLFDCS["HB3","MCCoriginal"]<-MCCorig
+
+###
+
+## Make a Table
+
+day_names_old<- c("Species/Tier","Poriginal","Roriginal","MCCoriginal","NDays","NDayswAnn","NDayswdetec") 
+day_names_new <- c("Species/Tier","Precision","Recall","MCC Score","n Days","n Days w/Annotations", "n Days w/Detections")
+
+TableDayLFDCS %>% 
+  rownames_to_column(var="Species/Tier") %>% 
+  as_tibble() %>% 
+  mutate_if(is.numeric, format, digits=2) %>% 
+  rename_at(vars(day_names_old),~day_names_new) %>% 
+  flextable() %>% 
+#  set_header_df(mapping = data.frame(keys = colnames(TableFileLFDCS), values = file_col_names, 
+#                                    stringsAsFactors = FALSE), key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+```
