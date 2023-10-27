@@ -174,9 +174,9 @@ noise_data<-csv_data %>%
   # parse dates, rename columns of interest, drop unneeded columns
   transmute(filedate = as_date(as.character(`Start date and time (UTC)`)), 
             species = Species, callcat = V25, calltype = `Call type`) %>% 
-  filter(species %in% c("NC","NN")& callcat!="QT") %>%
+  filter(species %in% c("NC")& calltype ="TN") %>%
   select(filedate,species) %>% 
-  mutate(species = "NN") %>% 
+  mutate(species = "NC") %>% 
   group_by(filedate,species) %>%
   summarise() %>%
   ungroup() %>% 
@@ -225,8 +225,8 @@ ggplot() +
             fill = "grey50", colour = NA, alpha = 0.2) +
    
    #plot noise
-#  geom_tile(data=noise_data, aes(x=day_of_year, y=spcallgroup), height=Inf,
-#            fill = "gold", colour = NA, alpha = 0.2)+
+  geom_tile(data=noise_data, aes(x=day_of_year, y=spcallgroup), height=Inf,
+            fill = "gold", colour = NA, alpha = 0.2)+
   
   # plot species daily presence
   geom_tile(data=presence_data,aes(x=day_of_year, y=spcallgroup, fill = spcallgroup), height=0.75) + 
@@ -313,8 +313,8 @@ noise_per_week <- noise_data %>%
 ggplot() +
   
   #plot noise
-#  geom_tile(data=noise_per_week, aes(x=weekstart, y=days_present), height=Inf,
-#            fill = "gold", colour = NA, alpha = 0.1, width=7)+
+  geom_tile(data=noise_per_week, aes(x=weekstart, y=days_present), height=Inf,
+            fill = "gold", colour = NA, alpha = 0.1, width=7)+
   
   # facet by species 
   facet_wrap(~spcallgroup, ncol = 1) + 
