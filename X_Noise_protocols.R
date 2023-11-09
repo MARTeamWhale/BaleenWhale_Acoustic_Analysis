@@ -21,7 +21,7 @@ options(digits.secs = 3)
 
 ## Change these ##
 
-deployment_code <- "MGL_2018_09"
+deployment_code <- "XXX_####_##"
 
 wav_folder <-  r"(F:\MGL_2018_09\AMAR194.1.8000.M36-V35-100)" #copy file path to recording folder on working hard drive, paste inside r"( )"
 
@@ -50,15 +50,10 @@ ltsa_folder_name <- paste0(sp_name,tier,"_LTSA") #names the folder for files mak
 
 ltsa_folder <- dir.create(paste0(wav_folder,"\\",ltsa_folder_name)) # creates the folder to put the LTSA files in
 
-#lists all the files to include in LTSA
-
-#file_list <-read_csv(paste0("E:\\",deployment_code, "_", sp_name,tier, ".csv"), col_names = "filename")%>% 
-#  mutate(filepath= paste0(wav_folder, "\\", filename)) %>% 
-#  select(filepath) %>% 
-#  unlist()
 
 #Lists all files in a tier, to be extracted for LTSA
-file_list <- read_csv(here("Validation",deployment_code, "ArkLite Inputs",
+file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",
+                             deployment_code, r"(\Validation\Arklite_Inputs\)",
                            paste0(deployment_code, "_", sp_name,tier,"-updated",tier_date ,".csv")), col_names = "filename") %>% 
   mutate(filepath= paste0(wav_folder, "\\", filename)) %>% 
   select(filepath) %>% 
@@ -84,7 +79,7 @@ audio <- audio_data %>%
   mutate(filedate = as_datetime(datestring, format="%Y%m%dT%H%M%SZ")) # convert to datetime
 
 #get metadata for deployment
-metadata <- read_csv(here("R code", "RMarkdown Report", "metadata", "deployment_summary.csv")) %>% 
+metadata <- read_csv(here("RMarkdown Report", "metadata", "deployment_summary.csv")) %>% 
   mutate(Deployment= str_replace_all(Deployment,"-", "_")) %>% 
   filter(Deployment == deployment_code)
 
