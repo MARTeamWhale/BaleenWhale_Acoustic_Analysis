@@ -10,11 +10,12 @@
 # 2. Convert logs made in the LTSA to annotations to be opened in Pamlab
 # 3. Delete the temporary LTSA folder
 
-# Open the packages
-library(tidyverse)
-library(lubridate)
-library(readxl)
-library(here)
+# Download and install packages if not already installed: tidyverse, lubridate, readxl, here
+if (!require("pacman")) install.packages("pacman")
+
+# Then open the packages
+library(pacman)
+p_load(tidyverse,lubridate,readxl,here)
 
 options(digits.secs = 3) 
 
