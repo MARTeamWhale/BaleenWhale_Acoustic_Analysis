@@ -4,17 +4,11 @@
 
 
 # Download and install packages if not already installed: data.table, tidyverse, here
-
-if (!require("data.table")) install.packages("data.table")
-if (!require("tidyverse")) install.packages("tidyverse")
-if (!require("here")) install.packages("here")
+if (!require("pacman")) install.packages("pacman")
 
 # Then open the packages
-
-library(data.table)
-library(tidyverse)
-library(here)
-
+library(pacman)
+p_load(data.table, tidyverse)
 
 ### EDIT THESE:
 file_path <- r"(F:\MGL_2018_09\AMAR194.1.8000.M36-V35-100\annotations)" #copy file path to annotations folder within recording folder, paste inside r"( )"
@@ -38,4 +32,5 @@ annomerge <- rbindlist(sapply(file_list, fread, simplify = FALSE, USE.NAMES = TR
 
 # Export csv file
 output_file = paste0(deployment_code,"_",AnalysisCode,"_",SpeciesCode, "_Annotations_",Sys.Date(),".csv")
-write_csv(annomerge, here("Results", deployment_code, output_file))
+write_csv(annomerge, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                            r"(\Results\)",output_file))

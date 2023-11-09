@@ -9,12 +9,12 @@
 # output csv is formatted as a simple file list for ArkLite
 
 ########
+# Download and install packages if not already installed: data.table, tidyverse, here
+if (!require("pacman")) install.packages("pacman")
 
-# load required R packages
-
-library(tidyverse)
-library(lubridate)
-library(here)
+# Then open the packages
+library(pacman)
+p_load(tidyverse, lubridate)
 
 
 ######## INPUT (modify these lines) ########
@@ -51,10 +51,11 @@ tier <- "4"
 # 1) load files
 annotation_csv <- paste0(deployment_code,"_DPA_MB_Annotations_",annotation_date,".csv")
 
-annotations <- read_csv(here("Results", deployment_code, annotation_csv))
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                               r"(\Results\)", annotation_csv))
 
-species_detections <- read_csv(here("Validation",deployment_code, "ArkLite Inputs",
-                                    paste0(deployment_code, "_", sp_name,tier, ".csv")), col_names = "filename") # very important to specify col_names here
+species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                                      r"(\Validation\Arklite_Inputs\)", paste0(deployment_code, "_", sp_name,tier, ".csv")), col_names = "filename") # very important to specify col_names here
 
 # 2) add filename and filedate variables to annotation table
 annotations <- annotations %>% 
@@ -89,4 +90,5 @@ today<-Sys.Date()
 output_file<-paste0(deployment_code, "_", sp_name,tier, "-updated", today, ".csv")
 
 #export as csv, removing column header
-write_csv(file_list, here("Validation", deployment_code, "ArkLite Inputs", output_file), col_names = FALSE)
+write_csv(file_list, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                            r"(\Validation\Arklite_Inputs\)", output_file), col_names = FALSE)

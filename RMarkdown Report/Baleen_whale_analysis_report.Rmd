@@ -35,10 +35,11 @@ deploymentm<-str_replace_all(params$deployment, "_", "-")
 
 # input metadata
 
-metadata<-read_csv(here("R code", "RMarkdown Report", "metadata", paste(params$metadata)))
+metadata<-read_csv(here("RMarkdown Report", "metadata", paste(params$metadata)))
 
 # input data: presence table
-csv_data<-read_csv(here("Results", params$deployment, paste(params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep="")))
+csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment,
+                            r"(\Results\)", paste(params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep="")))
 
 # clean up and summarize csv data
 
@@ -363,7 +364,7 @@ These are summary tables of the LFDCS detector performance for `r deployment_met
 \
 **Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$Deployment` dataset.
 ```{r detector_performance_table_file}
-Detections <- read_csv(here('Validation',params$deployment,'ArkLite Inputs',paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)
+Detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)
 
 detections_file <-Detections %>%
   mutate(filename=Filename) %>% 

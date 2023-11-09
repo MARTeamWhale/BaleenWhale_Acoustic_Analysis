@@ -1,6 +1,5 @@
 
 # Helper script to run Baleen_whale_analysis_report.Rmd
-
 library(here)
 library(knitr)
 
@@ -28,7 +27,7 @@ missing_data_end = as.Date("2020-09-10", format="%Y-%m-%d")
 render_report = function(
   deployment, metadata, missing_data, missing_data_start, missing_data_end) {
   
-  rmarkdown::render(here("R code", "RMarkdown Report",
+  rmarkdown::render(here("RMarkdown Report",
     "Baleen_whale_analysis_report.Rmd"), 
       params = list(
         deployment = deployment,
@@ -37,7 +36,8 @@ render_report = function(
         missing_data_start = missing_data_start,
         missing_data_end = missing_data_end
       ),
-    output_file = here("Results", deployment, paste0(deployment, "_analysis_report.docx"))
+    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment,
+                         r"(\Results\)", paste0(deployment, "_analysis_report.docx"))
   )
 }
 

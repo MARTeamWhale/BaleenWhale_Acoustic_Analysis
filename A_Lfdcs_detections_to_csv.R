@@ -5,28 +5,22 @@
 
 
 # Download and install packages if not already installed: tidyverse, lubridate, readxl, here
-if (!require("readxl")) install.packages("readlxl")
-if (!require("tidyverse")) install.packages("tidyverse")
-if (!require("here")) install.packages("here")
-if (!require("lubridate")) install.packages("lubridate")
+if (!require("pacman")) install.packages("pacman")
 
 # Then open the packages
-library(tidyverse)
-library(lubridate)
-library(readxl)
-library(here)
+library(pacman)
+p_load(tidyverse,lubridate,readxl)
+
 
 ### Change these ####
 
-deployment_code ="SABW_2022_10" ###Deployment code here
+deployment_code ="STN_YYYY_MM" ###Deployment code here
 
 analyst1 = "GM" ## HF analyst initial names (from lfdcs output filename)
 
 analyst2 = "GM" ## LF analyst initial names (from lfdcs output filename)
 
-NAS <- "5" #which # of NAS has the recording files
-
-Foldername <- "AMAR197.1.16000.M36-V35-100"   #name of folder with recording files
+Folderpath <- r"(F:\MGL_2018_09\AMAR194.1.8000.M36-V35-100)"   #path to .wav folders on working hard drive
 
 
 ### Run These ####
@@ -36,9 +30,7 @@ Foldername <- "AMAR197.1.16000.M36-V35-100"   #name of folder with recording fil
 Year <- str_sub(deployment_code, start = -7, end = -4)
 Month <- str_sub(deployment_code, start = -2, end = -1)
 
-audio_list <- paste0("//142.2.83.52/whalenas",NAS,"/MOORED_PAM_DATA/",Year,"/",Month,"/",deployment_code, "/",Foldername)
-
-audio_data <-list.files(audio_list, pattern = ".wav")
+audio_data <-list.files(Folderpath, pattern = ".wav")
 
 audio <- audio_data %>%
   as_tibble_col(column_name = "Filename") %>%
@@ -49,7 +41,8 @@ audio <- audio_data %>%
 
 lfdcs_fileHF <- paste0(deployment_code,"_HF","_BIO_",analyst1,".csv")
 
-lfdcs_dataHF <- read.csv(here("Validation",deployment_code,"LFDCS Outputs", lfdcs_fileHF), header= FALSE)
+lfdcs_dataHF <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                                r"(\Validation\LFDCS_Outputs\)", lfdcs_fileHF), header= FALSE)
 ### PLEASE MAKE SURE THERE ARE 11 VARIABLES! IF THERE ISN'T, RESAVE THE CSV ###
 
 lfdcsHF<-lfdcs_dataHF%>%
@@ -83,7 +76,9 @@ detectionsHF<- lfdcsHF%>%
 
 lfdcs_fileLF <- paste0(deployment_code,"_LF","_BIO_",analyst2,".csv")
 
-lfdcs_dataLF <- read.csv(here("Validation",deployment_code,"LFDCS Outputs", lfdcs_fileLF), header= FALSE)
+lfdcs_dataLF <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                                r"(\Validation\LFDCS_Outputs\)", lfdcs_fileLF), header= FALSE)
+
 ### PLEASE MAKE SURE THERE ARE 11 VARIABLES! IF THERE ISN'T, RESAVE THE CSV ###
 
 lfdcsLF<-lfdcs_dataLF%>%
@@ -115,8 +110,8 @@ detectionsLF<- lfdcsLF%>%
 ## Make an All Species Detection List ##
 
 detectionsALL <-bind_rows(detectionsLF,detectionsHF)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_MBDetections.csv"))
-
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_MBDetections.csv"))
 
 #### Make filename lists per species, per MDIST for Arklite ###
 
@@ -125,44 +120,52 @@ detectionsALL <-bind_rows(detectionsLF,detectionsHF)%>%
 files_Bm3 <- detectionsALL %>%
   filter(Species == "Bm", MD3 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bm3.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bm3.csv"), col_names = FALSE)
 
 
 files_Bm4 <- detectionsALL %>%
   filter(Species == "Bm", MD4 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bm4.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bm4.csv"), col_names = FALSE)
 
 ## Fin Whale
 files_Bp2 <- detectionsALL %>%
   filter(Species == "Bp", MD2 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bp2.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bp2.csv"), col_names = FALSE)
 
 
 files_Bp3 <- detectionsALL %>%
   filter(Species == "Bp", MD3 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bp3.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bp3.csv"), col_names = FALSE)
 
 ## Sei Whale
 files_Bb2 <- detectionsALL %>%
   filter(Species == "Bb", MD2 !=0)%>%
   select(Filename) %>% 
-write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bb2.csv"), col_names = FALSE)
+write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                 r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bb2.csv"), col_names = FALSE)
 
 files_Bb4 <- detectionsALL %>%
   filter(Species == "Bb", MD4 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Bb4.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Bb4.csv"), col_names = FALSE)
 
 ## Humpback Whale
 files_Mn2 <- detectionsALL %>%
   filter(Species == "Mn", MD2 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Mn2.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Mn2.csv"), col_names = FALSE)
 
 files_Mn3 <- detectionsALL %>%
   filter(Species == "Mn", MD3 !=0)%>%
   select(Filename)%>%
-  write_csv(str_c(here("Validation", deployment_code, "ArkLite Inputs"),"/",deployment_code,"_Mn3.csv"), col_names = FALSE)
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Mn3.csv"), col_names = FALSE)
