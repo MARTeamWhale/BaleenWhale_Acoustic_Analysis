@@ -3,34 +3,33 @@
 # Creates a figure that displays the current analysis status of all deployments for baleen acoustic analysis
 
 
-#####install packages if needed####
-if (!require("tidyverse")) install.packages("tidyverse")
-if (!require("lubridate")) install.packages("lubridate")
-if (!require("ggpattern")) install.packages("ggpattern")
-if (!require("here")) install.packages("here")
+# Download and install packages if not already installed: data.table, tidyverse, here
+if (!require("pacman")) install.packages("pacman")
 
-#####Open packages####
-
-library(tidyverse)
-library(lubridate)
-library(ggpattern)
-library(here)
+# Then open the packages
+library(pacman)
+p_load(tidyverse, lubridate, ggpattern)
 
 ####Set it up####
 
 #read in workplan data
-effort_data <-read.csv(paste0(here("DeploymentSummary-Baleenanalysis.csv")))
+effort_data <-read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Codes\DeploymentSummary-Baleenanalysis.csv)"))
 
 #list deployments that are: processed, partially analyzed, fully analyzed
 
-base_dir_results <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhaleValidation_InterimResults\Results)"
+base_dir <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\UNDER CONSTRUCTION - Abandon All Hope, Ye Who Enter Here\Deployments)"
 
-sub_dirs_results <- list.dirs(base_dir_results, full.names = TRUE, recursive = FALSE)
+sub_dirs<- list.dirs(base_dir, full.names = TRUE, recursive = TRUE)
+
+sub_dirs_results <-sub_dirs[grepl("Results", sub_dirs)]
+sub_dirs_results <-sub_dirs_results[!grepl("annotations", sub_dirs_results)]
+sub_dirs_results <-sub_dirs_results[!grepl("analysis_report_files", sub_dirs_results)]
+
 
 fully_analyzed <- character(0)
 
 for (sub_dir in sub_dirs_results) {
-  sub_dir_name <- basename(sub_dir)
+  sub_dir_name <-str_extract(sub_dir, "([A-Za-z]{3,}_\\d{4}_\\d{2})")
   matching_file <- file.path(sub_dir, paste0(sub_dir_name, "_analysis_report.docx"))
   
   if (file.exists(matching_file)) {
@@ -38,20 +37,21 @@ for (sub_dir in sub_dirs_results) {
   }
 }
 
-partially_analyzed <- anti_join(data_frame(value=basename(sub_dirs_results)), data_frame(value=fully_analyzed), by="value") %>% 
-  filter(value != "ANNOTATION RESULTS") %>% 
+partially_analyzed <- anti_join(tibble(value=str_extract(sub_dirs_results, "([A-Za-z]{3,}_\\d{4}_\\d{2})")), data_frame(value=fully_analyzed), by="value") %>%
   rename(Partial=value)
 
 fully_analyzed<- fully_analyzed %>% 
   as_tibble() %>% 
   rename(Full=value)
 
-base_dir_valid <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhaleValidation_InterimResults\Validation)"
-
 sub_dirs_valid <- list.dirs(base_dir_valid, full.names = TRUE, recursive = FALSE)
 
-processed <- anti_join(data_frame(value = basename(sub_dirs_valid)),data_frame(value=basename(sub_dirs_results)), data_frame(value=fully_analyzed), by="value") %>% 
-  filter(value != "1COPY THIS FOLDER AND RENAME") %>% 
+sub_dirs_valid <-sub_dirs[grepl("Validation", sub_dirs)]
+sub_dirs_valid <-sub_dirs_valid[!grepl("ArkLite_Inputs", sub_dirs_valid)]
+sub_dirs_valid <-sub_dirs_valid[!grepl("LFDCS_Outputs", sub_dirs_valid)]
+sub_dirs_valid <-sub_dirs_valid[!grepl("spectrograms", sub_dirs_valid)]
+
+processed <- anti_join(tibble(value = str_extract(sub_dirs_results, "([A-Za-z]{3,}_\\d{4}_\\d{2})")),tibble(value=str_extract(sub_dirs_results, "([A-Za-z]{3,}_\\d{4}_\\d{2})")), tibble(value=fully_analyzed), by="value") %>%
   rename(Processed=value)
 
 
@@ -130,6 +130,7 @@ p<- ggplot (effort) +
         
 p
 
-ggsave(paste0("PAM_analysis_summary_Baleen_",format(Sys.Date(),"%Y%m%d"),"_GM.png"),p, width = 7, height = 8, dpi = 300)
+ggsave(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\)",
+              paste0("PAM_analysis_summary_Baleen_",format(Sys.Date(),"%Y%m%d"),"_GM.png")),p, width = 7, height = 8, dpi = 300)
 
 
