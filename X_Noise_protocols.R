@@ -43,8 +43,8 @@ sampling_rate = "8000.0" #change to the sampling rate of the deployment
 
 operator = "MACKLING" #Analysts last name and first initial
 
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 
 ### STEP 1: Move files into a separate, temporary LTSA folder ####
 
@@ -63,8 +63,8 @@ file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\B
 
 file.copy(file_list,paste0(wav_folder,"\\",ltsa_folder_name)) # copies LTSA files from main directory to LTSA folder
 
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
-### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### 
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
+### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 
 ### STEP 2: Convert LTSA log excel files to annotations ####
 ltsa_folder_name <- paste0(sp_name,tier,"_LTSA") #names the folder for files making the LTSA
