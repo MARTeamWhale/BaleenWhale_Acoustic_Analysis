@@ -33,5 +33,5 @@ annomerge <- rbindlist(sapply(file_list, fread, simplify = FALSE, USE.NAMES = TR
 
 # Export csv file
 output_file = paste0(deployment_code,"_",AnalysisCode,"_",SpeciesCode, "_Annotations_FINAL.csv")
-write_csv(annomerge, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+write_csv(annomerge, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                             r"(\Results\)", output_file))

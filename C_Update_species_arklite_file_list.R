@@ -26,7 +26,7 @@ deployment_code <- "MGL_2018_09"
 annotation_date <- "2023-09-28"
 
 # specify target species:
-# Bm	= Blue whale     Bp	= Fin whale     Bb	= Sei whale     Mn	= Humpback whale
+# BmT	= Blue whale tonal  BmA	= Blue whale audible   Bp	= Fin whale     Bb	= Sei whale     Mn	= Humpback whale
 
 sp_name <- "Bm"
 
@@ -36,7 +36,7 @@ sp_name <- "Bm"
 sp_code <- "BW"
 
 #Specify the call category/type targeted by detector
-# IF = Blue whale tonals  IS = Fin whale pulses  FF = Sei whale downsweeps   NS","SG = Humpback whale (all call types)
+# IF = Blue whale tonals, # A = Blue whale audible  IS = Fin whale pulses  FF = Sei whale downsweeps   NS","SG = Humpback whale (all call types)
 
 sp_call <- c("IF")
 
@@ -51,10 +51,10 @@ tier <- "4"
 # 1) load files
 annotation_csv <- paste0(deployment_code,"_DPA_MB_Annotations_",annotation_date,".csv")
 
-annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                r"(\Results\)", annotation_csv))
 
-species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                       r"(\Validation\Arklite_Inputs\)", paste0(deployment_code, "_", sp_name,tier, ".csv")), col_names = "filename") # very important to specify col_names here
 
 # 2) add filename and filedate variables to annotation table
@@ -90,5 +90,5 @@ today<-Sys.Date()
 output_file<-paste0(deployment_code, "_", sp_name,tier, "-updated", today, ".csv")
 
 #export as csv, removing column header
-write_csv(file_list, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment_code,
+write_csv(file_list, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                             r"(\Validation\Arklite_Inputs\)", output_file), col_names = FALSE)
