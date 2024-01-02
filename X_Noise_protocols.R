@@ -54,7 +54,7 @@ ltsa_folder <- dir.create(paste0(wav_folder,"\\",ltsa_folder_name)) # creates th
 
 
 #Lists all files in a tier, to be extracted for LTSA
-file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",
+file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
                              deployment_code, r"(\Validation\Arklite_Inputs\)",
                            paste0(deployment_code, "_", sp_name,tier,"-updated",tier_date ,".csv")), col_names = "filename") %>% 
   mutate(filepath= paste0(wav_folder, "\\", filename)) %>% 
@@ -83,7 +83,7 @@ audio <- audio_data %>%
   mutate(filedate = as_datetime(datestring, format="%Y%m%dT%H%M%SZ")) # convert to datetime
 
 #get metadata for deployment
-metadata <- read_csv(here("RMarkdown Report", "metadata", "deployment_summary.csv")) %>% 
+metadata <- read_csv(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metadata\deployment_summary.csv)") %>% 
   mutate(Deployment= str_replace_all(Deployment,"-", "_")) %>% 
   filter(Deployment == deployment_code)
 
