@@ -52,7 +52,7 @@ tier <- "4"
 annotation_csv <- paste0(deployment_code,"_DPA_MB_Annotations_",annotation_date,".csv")
 
 annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
-                               r"(\Results\)", annotation_csv))
+                               r"(\Results\interim_csvs\)", annotation_csv))
 
 species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                       r"(\Validation\Arklite_Inputs\)", paste0(deployment_code, "_", sp_name,tier, ".csv")), col_names = "filename") # very important to specify col_names here
