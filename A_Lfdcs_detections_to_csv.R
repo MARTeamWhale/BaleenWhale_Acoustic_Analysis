@@ -86,7 +86,7 @@ lfdcs_dataLF <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_
 
 ### PLEASE MAKE SURE THERE ARE 11 VARIABLES! IF THERE ISN'T, RESAVE THE CSV ###
 
-sp_LF_code <- c("1"="Bp","2"="Bm","3"="Bm","4"="Bm")
+sp_LF_code <- c("1"="Bp","2"="BmT","3"="BmT","4"="BmT")
 
 lfdcsLF<-lfdcs_dataLF%>%
   filter(!row_number() %in% c(1:22))%>%
