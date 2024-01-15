@@ -13,11 +13,14 @@ deployment = "JOBW_2019_04" # name of deployment to summarize
 metadata = "deployment_summary.csv" # name of metadata csv file
 missing_data = FALSE # true if there is missing data within deployment period
 
+# if missing_data = TRUE, specify start and end date(s) of missing data period(s) (if false, this will be ignored)
 
-# if missing_data = TRUE, specify dates below (if false, this will be ignored):
+# NOTES:
+# 1) use format c("YYYY-MM-DD", "YYYY-MM-DD")
+# 2) if missing data spans two years, list as two separate periods (ending Dec 31 and starting Jan 1)
 
-missing_data_start = as.Date("2020-01-17", format="%Y-%m-%d")
-missing_data_end = as.Date("2020-09-10", format="%Y-%m-%d")
+missing_data_starts = c("2020-11-16","2021-03-09","2021-05-05")
+missing_data_ends = c("2020-12-24","2021-03-28","2021-05-24")
 
 ################################################################################
 
