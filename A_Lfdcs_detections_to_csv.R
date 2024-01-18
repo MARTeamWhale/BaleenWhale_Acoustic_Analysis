@@ -139,21 +139,18 @@ files_BmT4 <- detectionsALL %>%
 
 files_BmA2 <- detectionsALL %>%
   filter(Species == "BmA", MD2 !=0)%>%
-  select(Filename)
-
-if(nrow(files_BmA2)>0) {
-  write_csv(files_BmA2,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+  select(Filename) %>% 
+{if (nrow(.)>0) write_csv(.,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                         r"(\Validation\ArkLite_Inputs\)",deployment_code,"_BmA2.csv"), col_names = FALSE)
-  } else {print("Data not available")}
+  else print("Data not available")}
   
 
 files_BmA4 <- detectionsALL %>%
   filter(Species == "BmA", MD4 !=0)%>%
-  select(Filename)
-
-if(nrow(files_BmA4)>0) {write_csv(files_BmA4,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+  select(Filename) %>% 
+{if(nrow(.)>0) write_csv(.,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                            r"(\Validation\ArkLite_Inputs\)",deployment_code,"_BmA4.csv"), col_names = FALSE)
-  } else {print("Data not available")}
+ else print("Data not available")}
 
 
 ## Fin Whale
