@@ -20,7 +20,7 @@ analyst1 = "GM" ## HF analyst initial names (from lfdcs output filename)
 
 analyst2 = "GM" ## LF analyst initial names (from lfdcs output filename)
 
-Folderpath <- r"(F:\MGL_2018_09\AMAR194.1.8000.M36-V35-100)"   #path to .wav folders on working hard drive
+Folderpath <- r"(FILE PATH TO .WAV FILES)"   #path to .wav folders on working hard drive
 
 
 ### Run These ####
@@ -140,7 +140,9 @@ files_BmT4 <- detectionsALL %>%
 files_BmA2 <- detectionsALL %>%
   filter(Species == "BmA", MD2 !=0)%>%
   select(Filename)
-if(nrow(files_BmA2)>0) {write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+
+if(nrow(files_BmA2)>0) {
+  write_csv(files_BmA2,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                         r"(\Validation\ArkLite_Inputs\)",deployment_code,"_BmA2.csv"), col_names = FALSE)
   } else {print("Data not available")}
   
@@ -148,7 +150,8 @@ if(nrow(files_BmA2)>0) {write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\Cetacean
 files_BmA4 <- detectionsALL %>%
   filter(Species == "BmA", MD4 !=0)%>%
   select(Filename)
-if(nrow(files_BmA2)>0) {write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+
+if(nrow(files_BmA4)>0) {write_csv(files_BmA4,paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                            r"(\Validation\ArkLite_Inputs\)",deployment_code,"_BmA4.csv"), col_names = FALSE)
   } else {print("Data not available")}
 
