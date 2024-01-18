@@ -12,7 +12,7 @@ pacman::p_load(here, knitr)
 # required:
 
 deployment = "MBK_2021_09" # name of deployment to summarize
-metadata = "deployment_summary.csv" # name of metadata csv file
+metadata = "deployment_summary.csv" # name of metadata csv file - do not change unless necessary for special case
 Bm_audible = FALSE # set as true if blue whale audible detector was used, false if annotations were opportunistic
 missing_data = FALSE # set as true if there is missing data within deployment period
 
@@ -43,8 +43,10 @@ render_report = function(
         missing_data_starts = missing_data_starts,
         missing_data_ends = missing_data_ends
       ),
-    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
-                         r"(\Results\)", paste0(deployment, "_analysis_report-TEST.docx"))
+    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+                         deployment,
+                         r"(\Results\)", 
+                         paste0(deployment, "_analysis_report_", Sys.Date(), ".docx"))
   )
 }
 
