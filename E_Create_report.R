@@ -1,7 +1,9 @@
 
 # Helper script to run Baleen_whale_analysis_report.Rmd
-library(here)
-library(knitr)
+
+# load packages
+library(pacman)
+pacman::p_load(here, knitr)
 
 ################################################################################ 
 
@@ -9,9 +11,10 @@ library(knitr)
 
 # required:
 
-deployment = "JOBW_2019_04" # name of deployment to summarize
+deployment = "MBK_2021_09" # name of deployment to summarize
 metadata = "deployment_summary.csv" # name of metadata csv file
-missing_data = FALSE # true if there is missing data within deployment period
+Bm_audible = FALSE # set as true if blue whale audible detector was used, false if annotations were opportunistic
+missing_data = FALSE # set as true if there is missing data within deployment period
 
 # if missing_data = TRUE, specify start and end date(s) of missing data period(s) (if false, this will be ignored)
 
@@ -19,8 +22,8 @@ missing_data = FALSE # true if there is missing data within deployment period
 # 1) use format c("YYYY-MM-DD", "YYYY-MM-DD")
 # 2) if missing data spans two years, list as two separate periods (ending Dec 31 and starting Jan 1)
 
-missing_data_starts = c("2020-11-16","2021-03-09","2021-05-05")
-missing_data_ends = c("2020-12-24","2021-03-28","2021-05-24")
+missing_data_starts = c(" ")
+missing_data_ends = c(" ")
 
 ################################################################################
 
@@ -28,21 +31,22 @@ missing_data_ends = c("2020-12-24","2021-03-28","2021-05-24")
 
 # define function
 render_report = function(
-  deployment, metadata, missing_data, missing_data_start, missing_data_end) {
+  deployment, metadata, Bm_audible, missing_data, missing_data_starts, missing_data_ends) {
   
   rmarkdown::render(here("RMarkdown Report",
     "Baleen_whale_analysis_report.Rmd"), 
       params = list(
         deployment = deployment,
         metadata = metadata,
+        Bm_audible = Bm_audible,
         missing_data = missing_data,
-        missing_data_start = missing_data_start,
-        missing_data_end = missing_data_end
+        missing_data_starts = missing_data_starts,
+        missing_data_ends = missing_data_ends
       ),
-    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenAcousticAnalysis\Deployments\)",deployment,
-                         r"(\Results\)", paste0(deployment, "_analysis_report.docx"))
+    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
+                         r"(\Results\)", paste0(deployment, "_analysis_report-TEST.docx"))
   )
 }
 
 # render report based on parameters set above
-render_report(deployment, metadata, missing_data, missing_data_start, missing_data_end)
+render_report(deployment, metadata, Bm_audible, missing_data, missing_data_starts, missing_data_ends)
