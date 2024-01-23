@@ -88,7 +88,7 @@ big4 <- big4.in %>%
   select(!c(definite, possible))
 
 ## Minke ----
-if (include.minke = TRUE){
+if (include.minke == TRUE){
   
 minke <-minke.in %>%
   select(`Species Code`,`Start time`,Call) %>% 
@@ -116,7 +116,7 @@ minke <-minke.in %>%
 
 # Compile all together ----
 
- if (include.minke=TRUE){
+ if (include.minke == TRUE){
 baleen.daily <- rbind(big4,narw,minke) %>% 
   group_by_all() %>% 
   summarise() %>% 
