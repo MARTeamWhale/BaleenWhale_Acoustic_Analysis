@@ -1,0 +1,583 @@
+---
+title: "Baleen Whale Acoustic Analysis Report"
+date: "Date created: `r format(Sys.time(), '%Y-%m-%d')`"
+output: 
+  word_document:
+    reference_docx: word_styles_reference_01.docx
+    fig_caption: TRUE
+format: "pipe"
+
+params:
+  deployment: ""
+  metadata: ""
+  Bm_audible: 
+  missing_data: 
+  missing_data_starts: 
+  missing_data_ends: 
+always_allow_html: TRUE
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE) # sets global defaults
+
+# load packages
+library(pacman)
+pacman::p_load(here, tidyverse, lubridate, kableExtra, tinytex, flextable, RColorBrewer, crul, stringr, readr, yardstick)
+
+# set dplyr not to display 'summarise' messages
+options(dplyr.summarise.inform = FALSE)
+
+# deployment name in metadata uses "-" instead of "_" 
+deploymentm<-str_replace_all(params$deployment, "_", "-")
+
+# input metadata
+metadata<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metadata)","\\", params$metadata))
+
+# input data: baleen whale daily presence csv
+csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
+                            r"(\Results\)", paste(params$deployment,"_baleenwhale_dailypresence.csv", sep="")))
+
+## create named list of possible baleen whale species/call groups that may occur in data
+spcallgroup_vec <- c("Bm_A_all",
+                     "Bm_IF_all",
+                     "Bp_IS_D", 
+                     "Mn_all",                     
+                     "Bb_FF_all", 
+                     "Ba_PT_all", 
+                     "Eg_UP_U")
+
+spcallgroup_label <- c("Blue whale (audible calls)",
+                       "Blue whale (tonal calls)",
+                       "Fin whale (20Hz calls)",
+                       "Humpback whale (all calls)",                        
+                       "Sei whale (full frequency downsweep calls)",
+                       "Minke whale (pulse trains)",
+                       "North Atlantic right whale (upcalls)")
+
+names(spcallgroup_vec) <-spcallgroup_label
+
+```
+
+
+```{r daily presence}
+
+## set up metadata
+
+deployment_metadata <- metadata %>%
+  
+  # select relevant deployment
+  filter(Deployment == deploymentm) %>% 
+  
+  # set up latitude and longitude for cleaner output, format as numeric
+  mutate(latitude = as.numeric(format(Latitude, digits=4)),
+         longitude = as.numeric(format(Longitude, digits=4))) %>% 
+  
+  # parse dates and drop unneeded columns: start is first full recording day, end is last full recording day
+  transmute(deployment = Deployment,
+            latitude,
+            longitude,
+            start = as_date(`In-water_start`)+1, 
+            end = as_date(`In-water_end`)-1) %>%
+  
+  # get day of year for start and end, calculate number of days with effort
+  mutate(start_day = yday(start), 
+         start_year = year(start), 
+         end_day = yday(end), 
+         end_year = year(end),
+         ndays = as.numeric(end - start+1))
+
+## create data frame for no data periods to use later in plots; add missing data periods if needed
+
+no_data_periods <- tibble(year = as_factor(c(deployment_metadata$start_year, deployment_metadata$end_year)),
+                          start_dates = c(as.Date(paste0(deployment_metadata$start_year, "-01-01")), deployment_metadata$end),
+                          end_dates = c(deployment_metadata$start-1, as.Date(paste0(deployment_metadata$end_year, "-12-31"))),
+                          data_gap = 0) %>%
+  # if missing_data = TRUE, add additional missing data period(s)
+  {if (params$missing_data) rbind(., list(year = as_factor(year(missing_data_starts)),
+                                          start_dates = as.Date(missing_data_starts),
+                                          end_dates = as.Date(missing_data_ends),
+                                          data_gap = rep_len(1,length.out = length(missing_data_starts)))) else .}
+ 
+# if missing_data=TRUE, generate vector of missing dates, calculate number of missing days, and subtract from recording effort
+
+if (params$missing_data){
+  
+  missing_dates_list <- mapply(seq.Date, as.Date(missing_data_starts), as.Date(missing_data_ends), by = 1)
+  missing_dates <- tibble(effort_date = as.Date(unlist(missing_dates_list, use.names = FALSE)))
+  
+  # get total number of missing days
+  subdays <- length(missing_dates$effort_date)
+  
+  # subtract missing days from total recording days
+  deployment_metadata <- deployment_metadata %>%
+    mutate(ndays = ndays-subdays)
+}
+
+
+## set up species presence data
+
+presence_data<-csv_data %>%
+  
+  # include only definite presence
+  filter(presence == "D") %>% 
+  
+  # sort out species/call groups
+  mutate(spcallgroup = case_when(species == "Bm" & callcat == "A" ~ "Bm_A_all",
+                                 species == "Bm" & callcat == "IF" ~ "Bm_IF_all",
+                                 species == "Bp" & callcat == "IS" ~ "Bp_IS_D",
+                                 species == "Mn" ~ "Mn_all",                                 
+                                 species == "Bb" & callcat == "FF" ~ "Bb_FF_all",
+                                 species == "Ba" ~ "Ba_PT_all",
+                                 species == "Eg" ~ "Eg_UP_U")) %>%
+  
+  # remove rows that were not assigned a spcallgroup above
+  drop_na(spcallgroup) %>% 
+  
+  # bin presence of each spcallgroup by day
+  group_by(detecdate, species, spcallgroup) %>%
+  summarise() %>%
+  ungroup() %>% 
+  
+  # remove days not included in effort (based on full 24-hour recordings)
+  filter(detecdate >= deployment_metadata$start) %>% 
+  filter(detecdate <= deployment_metadata$end) %>% 
+  
+  # remove results from partial days included in missing data periods
+  {if (params$missing_data) filter(., !(detecdate %in% missing_dates$effort_date)) else .} %>%
+  
+  # add columns for year, month, and day of year
+  mutate(year = factor(year(detecdate))) %>%
+  mutate(month = month(detecdate)) %>% 
+  mutate(day_of_year = lubridate::yday(detecdate)) %>%
+  
+  # add all spcallgroups of interest as factor levels, using order specified in spcallgroup_vec
+  mutate(spcallgroup = factor(spcallgroup, spcallgroup_vec)) %>% 
+  
+  # rename factor levels
+  mutate(spcallgroup = fct_recode(spcallgroup, !!!spcallgroup_vec))
+
+
+```
+
+This report summarizes daily presence of baleen whale calls in the **`r deployment_metadata$deployment`** dataset, deployed at `r deployment_metadata$latitude`°N `r abs(deployment_metadata$longitude)`°W and analyzed from `r deployment_metadata$start` to `r deployment_metadata$end` (`r deployment_metadata$ndays` days`r if(params$missing_data){paste0(", not including ", subdays, " days of missing data")}`).  
+
+## Daily Presence Summary 
+
+
+```{r daily_summary_table}
+
+# summarize results for table
+daily_summary<-presence_data %>% 
+  group_by(spcallgroup) %>% 
+  summarize(days_present = n()) %>%  
+  mutate(percent_days_present = days_present/deployment_metadata$ndays*100) %>% 
+  ungroup()
+
+# specify column names
+daily_col_names<-c("Species (call type) ", "Days present (#)", "Days present (%)")
+
+# set up table
+daily_summary_table <- daily_summary %>% 
+  mutate_if(is.numeric, format, digits=2) %>% 
+  flextable() %>% 
+  set_header_df(mapping = data.frame(keys = colnames(daily_summary), 
+                                     values = daily_col_names, 
+                                     stringsAsFactors = FALSE), 
+                key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+
+# add footnote regarding blue whale audible calls if based on opportunistic annotations
+if(params$Bm_audible==FALSE){
+daily_summary_table <- footnote(daily_summary_table, 
+                        i = 1, j = 1, ref_symbols = "1",
+                        value = as_paragraph("Blue whale audible calls were annotated opportunistically during multispecies analysis"))
+}
+
+# produce table
+daily_summary_table
+
+  
+```
+\
+```{r fig1, fig.width=6.5, fig.height=5, fig.cap="Daily presence of baleen whale calls"}
+
+# assign colors to species for plotting
+cols = c("#A6CEE3", "#1F78B4","#7570B3", "#E7298A", "#66A61E", "darkorange", "darkred")
+names(cols) <- levels(presence_data$spcallgroup)
+
+# create daily presence figure  
+ggplot() +
+  
+  facet_wrap(~year, ncol = 1) +
+  
+  # plot missing data periods using single geom_rect call - do this first so that years are in correct order
+  geom_rect(data = no_data_periods, 
+            aes(xmin = yday(start_dates), xmax = yday(end_dates), ymin = -Inf, ymax = Inf), 
+            fill = "grey45", 
+            colour = NA, 
+            alpha = 0.2) +
+  
+  # plot species daily presence
+  geom_tile(data = presence_data, aes(x = day_of_year, y = spcallgroup, fill = spcallgroup), height = 0.75) + 
+  
+  # format plot
+  theme(axis.text.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.minor = element_blank(), 
+        panel.grid.major.y = element_blank(), 
+        panel.grid.major.x = element_blank(),
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        axis.text = element_text(size = 12), 
+        axis.text.x = element_text(angle = 0, vjust=0, hjust = -0.5),
+        axis.title.x = element_blank(),
+        strip.text.x = element_text(size = 12,face = "bold"), 
+        strip.background = element_rect(fill = "white", colour = "black"),
+        panel.border = element_rect(fill = NA, colour = "black"),
+        plot.margin = margin(0.1,0.1,0.1,0.1,"cm"),
+        legend.position = "bottom",
+        legend.justification = "left",
+        legend.direction = "vertical",
+        legend.margin = margin(t=-10)) +
+  
+  # format x axis breaks by month
+  scale_x_continuous(expand = c(0, 0), 
+                     limits = c(0, 367),
+                     breaks = c(1, 32, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335),
+                     labels = c('Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec')) +
+  
+  # set y axis direction to match legend
+  scale_y_discrete(limits = rev) +
+  
+  # format fill colors and legend
+  scale_fill_manual(values = cols,
+                    name = "",
+                    drop = T) +
+  
+  guides(fill = guide_legend(ncol = 2)) +
+  
+  xlab("")
+
+
+```
+\
+\
+**Figure 1:** Daily presence of baleen whale calls in the `r deployment_metadata$deployment` dataset.`r if(params$Bm_audible == FALSE){paste0(" Note that blue whale audible call presence is based only on opportunistic annotations.")}`
+\
+\
+```{r fig2, fig.width=6.5, fig.height=8, fig.cap="Weekly presence of baleen whale calls"}
+
+# get effort days within deployment period
+weekly_effort <- tibble(effort_date = seq.Date(deployment_metadata$start, deployment_metadata$end, by = 1)) %>%
+  mutate(effort = 1)
+
+# if missing_data=TRUE, remove missing dates
+if (params$missing_data) {
+  
+  weekly_effort<-weekly_effort %>%
+    mutate(effort = case_when(effort_date %in% missing_dates$effort_date ~ 0,
+                              .default = 1))
+}
+
+# get number of days per week with effort
+weekly_effort<-weekly_effort %>%
+  mutate(weekstart = floor_date(effort_date, "weeks")) %>%
+  group_by(weekstart) %>%
+  summarise(days_effort = sum(effort)) %>%
+  ungroup()
+
+# get presence days per week and join with effort
+days_per_week <- presence_data %>% 
+  mutate(weekstart = floor_date(detecdate, "weeks")) %>% 
+  group_by(spcallgroup, weekstart) %>% 
+  summarise(days_present = n()) %>% 
+  left_join(weekly_effort, by = "weekstart") %>% 
+  mutate(proportion_days_present = days_present/days_effort) %>% 
+  ungroup()
+
+
+## create weekly presence figure
+ggplot() +
+  
+  # facet by species 
+  facet_wrap(~spcallgroup, ncol = 1) + 
+  
+  # add no data periods 
+  geom_rect(data = no_data_periods, 
+            aes(xmin = start_dates, xmax = end_dates, ymin = -Inf, ymax = Inf),
+            fill = "grey50", 
+            colour = NA, 
+            alpha = 0.2) +
+  
+  # add bar plot of number of days per week with species presence
+  geom_col(data = days_per_week, 
+           aes(x = weekstart, y = days_present, fill = spcallgroup), 
+           show.legend = F, 
+           width = 4) + 
+  
+  # format fill colors and legend
+  scale_fill_manual(values = cols,
+                    name = "Species/call type",
+                    drop = T) +
+  
+  scale_y_continuous(expand = c(0,0), limits = c(0,7)) +
+  
+  scale_x_date(date_label = "%b %Y", expand = c(0,0)) +
+  
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.background = element_rect(fill = "white", colour = "grey50"), 
+        axis.text = element_text(size = 10),
+        axis.title = element_text(size = 11, face = "bold"),
+        strip.text.x = element_text(size = 11, face = "bold"), 
+        strip.background = element_rect(fill = "white", colour = "grey50"), 
+        panel.border = element_rect(fill = NA, colour = "grey60"),
+        plot.margin = margin(0.5,0.5,0.5,0.5,"cm")) + 
+  
+  xlab("") + 
+  
+  ylab("Days per week")
+
+```
+\
+**Figure 2:** Number of days per week with baleen whale call presence in the `r deployment_metadata$deployment` dataset.`r if(params$Bm_audible == FALSE){paste0(" Note that blue whale audible call presence is based only on opportunistic annotations.")}`
+\
+
+## Detector Performance
+
+These are summary tables of the LFDCS detector performance for `r deployment_metadata$deployment` at the file and daily level, for both detection tiers, for each species. **Note:** Recall values are calculated based on files and days opened as part of the presence analysis of the other species.
+\
+\
+**Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$deployment` dataset.
+```{r detector_performance_table_file, message=FALSE}
+
+detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)
+
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
+
+detec_list<- c('filename'='filename','BWT-3'='3_BmT',"BWT-4"='4_BmT',"FW-2"='2_Bp',"FW-3"='3_Bp',
+               "SW-2"='2_Bb',"SW-4"='4_Bb',"HB-2"='2_Mn',"HB-3"='3_Mn')
+
+detec_list_BmA <-c('filename'='filename','BWT-3'='3_BmT',"BWT-4"='4_BmT',"BWA-2"='2_BmA',"BWA-4"='4_BmA',
+                   "FW-2"='2_Bp',"FW-3"='3_Bp',"SW-2"='2_Bb',"SW-4"='4_Bb',"HB-2"='2_Mn',"HB-3"='3_Mn')
+sp_list <- c("BWT","BWA","FW","SW","HB")
+
+
+detections_file <-detections %>%
+  mutate(filename=Filename) %>% 
+  pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
+  rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
+  replace(is.na(.),0) %>%  # any files they weren't detected get a zero
+  
+  { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
+    else select(.,any_of(detec_list_BmA)) } %>% 
+  
+  group_by(filename) %>% 
+  summarise(across(where(is.numeric),sum)) %>% 
+  ungroup()
+
+
+annotations_files <- annotations %>%
+  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
+  select(filename,Species,V25) %>% 
+  filter(Species %in% c("BW","FW","SW","HB")) %>% 
+  mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
+                             Species=='BW' & V25=='A'~'BWA',
+                             TRUE~Species)) %>% 
+  distinct() %>%
+  mutate(Species= fct_expand(Species,sp_list)) %>% 
+  pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
+  mutate(across(.cols=-c(filename), ~as.numeric(!is.na(.)))) %>% 
+  group_by(filename) %>% 
+  summarise(across(where(is.numeric),sum)) %>% 
+  ungroup()
+
+Filedata <- left_join(detections_file, annotations_files, by ="filename") %>% 
+  filter(!if_all(c("BWT","BWA","FW","SW","HB"), is.na)) %>% 
+  mutate(across(.cols=-c(filename),~replace(.,.>1,1)))
+
+TableFileLFDCS<-data.frame(matrix(nrow=10, ncol=5, 0)) %>% 
+  `colnames<-`(c("Precision","Recall","MCC","Nfiles","Nfileswdetec")) %>% 
+  `rownames<-`(c("BWT-3","BWT-4","BWA-2","BWA-4","FW-2","FW-3","SW-2","SW-4","HB-2","HB-3"))
+
+
+TableFileLFDCS<- TableFileLFDCS %>%
+  mutate(tier=rownames(.)) %>% 
+  mutate(Nfiles = nrow(Filedata)) %>%
+  mutate(Nfileswdetec = as.numeric(colSums(Filedata[, rownames(TableFileLFDCS)] * (rownames(TableFileLFDCS) %in% colnames(Filedata))))) %>%
+  mutate(sp = str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+')) %>% 
+  left_join(data.frame(NfileswAnn = colSums(Filedata[, unique(str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+'))] * 
+                                str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+') 
+                              %in% str_extract(colnames(Filedata),'[a-zA-Z]+'))) %>% 
+                      mutate(sp=rownames(.)), by="sp") %>% 
+  column_to_rownames('tier')%>% 
+  select(!sp)
+
+Filedata2 <- Filedata %>% 
+  mutate_if(sapply(Filedata, is.numeric),as.factor)
+
+Filedata2<-Filedata2 %>% 
+  mutate(across(everything(), factor, levels = c("0","1"))) %>%
+  mutate_if(sapply(Filedata2, is.factor), fct_rev)
+
+for (i in rownames(TableFileLFDCS)) {
+  
+  if(!is.na(Filedata2[[i]])) {
+    TableFileLFDCS[i,"Precision"]<-  precision(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableFileLFDCS[i,"Precision"]<- NA
+  }
+}
+
+for (i in rownames(TableFileLFDCS2)) {
+  
+  if(!is.na(Filedata2[[i]])) {
+    TableFileLFDCS[i,"Recall"]<-  recall(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableFileLFDCS[i,"Recall"]<- NA
+  }
+}
+
+for (i in rownames(TableFileLFDCS2)) {
+  
+  if(!is.na(Filedata2[[i]])) {
+    TableFileLFDCS[i,"MCC"]<- mcc(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableFileLFDCS[i,"MCC"]<- NA
+  }
+}
+
+## create table
+# specify column names
+file_names_old<- c("Species-Tier","Precision","Recall","MCC","Nfiles","NfileswAnn","Nfileswdetec") 
+file_names_new <- c("Species-Tier","Precision","Recall","MCC Score","n Files","n Files w/Annotations", "n Files w/Detections")
+
+TableFileLFDCS %>% 
+  rownames_to_column(var="Species-Tier") %>% 
+  as_tibble() %>% 
+  mutate_if(is.numeric, format, digits=1) %>% 
+  rename_at(vars(file_names_old),~file_names_new) %>% 
+  flextable() %>% 
+  #  set_header_df(mapping = data.frame(keys = colnames(TableFileLFDCS), values = file_col_names, 
+  #                                    stringsAsFactors = FALSE), key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+```
+\
+**Table 2:** LFDCS detector performance per day, per tier, for each species for the `r deployment_metadata$deployment` dataset.
+```{r detector_performance_table_day}
+
+detections_day <-detections %>%
+  mutate(filename=Filename) %>% 
+  pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
+  rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
+  replace(is.na(.),0) %>%  # any files they weren't detected get a zero
+  { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
+    else select(.,any_of(detec_list_BmA)) } %>% 
+  group_by(filename) %>% 
+  summarise(across(where(is.numeric),sum)) %>% 
+  ungroup() %>% 
+  mutate(datestring = str_extract(filename, "\\d{8}\\w\\d{6}\\w")) %>%
+  mutate(Date = as_date(datestring, format="%Y%m%dT%H%M%SZ")) %>% 
+  group_by(Date) %>% 
+  summarise(across(where(is.numeric),sum))%>%
+  complete(Date = seq.Date(deployment_metadata$start,deployment_metadata$end, by="day"))
+
+annotations_day <- annotations %>%
+  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
+  select(filename,Species,V25) %>%
+  
+  filter(Species %in% c("BW","FW","SW","HB")) %>% 
+  mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
+                             Species=='BW' & V25=='A'~'BWA',
+                             TRUE~Species)) %>% 
+  distinct() %>%
+  mutate(Species= fct_expand(Species,sp_list)) %>% 
+  pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
+  mutate(across(.cols=-c(filename), ~as.numeric(!is.na(.)))) %>% 
+  group_by(filename) %>% 
+  summarise(across(where(is.numeric),sum)) %>% 
+  ungroup() %>% 
+  mutate(datestring = str_extract(filename, "\\d{8}\\w\\d{6}\\w")) %>%
+  mutate(Date = as_date(datestring, format="%Y%m%dT%H%M%SZ"))%>%
+  group_by(Date)%>%
+  summarize(across(where(is.numeric),sum)) %>%
+  ungroup()%>%
+  complete(Date = seq.Date(deployment_metadata$start,deployment_metadata$end, by="day"))
+  
+Daydata <- left_join(detections_day, annotations_day, by ="Date") %>%
+  filter(!if_all(c("BWT","BWA","FW","SW","HB"), is.na)) %>% 
+  mutate(across(.cols=-c(Date),~replace(.,.>1,1)))
+
+TableDayLFDCS<-data.frame(matrix(nrow=10, ncol=5, 0)) %>% 
+  `colnames<-`(c("Precision","Recall","MCC","Ndays","Ndayswdetec")) %>% 
+  `rownames<-`(c("BWT-3","BWT-4","BWA-2","BWA-4","FW-2","FW-3","SW-2","SW-4","HB-2","HB-3")) 
+
+TableDayLFDCS<- TableDayLFDCS %>%
+  mutate(tier=rownames(.)) %>% 
+  mutate(Ndays = nrow(Daydata)) %>%
+  mutate(Ndayswdetec = as.numeric(colSums(Daydata[, rownames(TableDayLFDCS)] * (rownames(TableDayLFDCS) %in% colnames(Daydata))))) %>%
+  mutate(sp = str_extract(rownames(TableDayLFDCS),'[a-zA-Z]+')) %>% 
+  left_join(data.frame(NdayswAnn = colSums(Daydata[, unique(str_extract(rownames(TableDayLFDCS),'[a-zA-Z]+'))] * 
+                                              str_extract(rownames(TableDayLFDCS),'[a-zA-Z]+') 
+                                            %in% str_extract(colnames(Daydata),'[a-zA-Z]+'))) %>% 
+              mutate(sp=rownames(.)), by="sp") %>% 
+  column_to_rownames('tier')%>% 
+  select(!sp)
+  
+
+Daydata2 <-Daydata %>% 
+  mutate_if(sapply(Daydata, is.numeric),as.factor)
+
+Daydata2<-Daydata2 %>% 
+  mutate(across(everything(), factor, levels = c("0","1"))) %>%
+  mutate_if(sapply(Daydata2, is.factor), fct_rev)
+
+for (i in rownames(TableDayLFDCS)) {
+  
+  if(!is.na(Daydata2[[i]])) {
+    TableDayLFDCS[i,"Precision"]<-  precision(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableDayLFDCS[i,"Precision"]<- NA
+  }
+}
+
+for (i in rownames(TableDayLFDCS)) {
+  
+  if(!is.na(Daydata2[[i]])) {
+    TableDayLFDCS[i,"Recall"]<-  recall(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableDayLFDCS[i,"Recall"]<- NA
+  }
+}
+
+for (i in rownames(TableDayLFDCS)) {
+  
+  if(!is.na(Daydata2[[i]])) {
+    TableDayLFDCS[i,"MCC"]<- mcc(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+  }
+  else {TableDayLFDCS[i,"MCC"]<- NA
+  }
+}
+## Make a Table
+
+day_names_old<- c("Species-Tier","Precision","Recall","MCC","Ndays","NdayswAnn","Ndayswdetec") 
+day_names_new <- c("Species-Tier","Precision","Recall","MCC Score","n Days","n Days w/Annotations", "n Days w/Detections")
+
+TableDayLFDCS %>% 
+  rownames_to_column(var="Species-Tier") %>% 
+  as_tibble() %>% 
+  mutate_if(is.numeric, format, digits=1) %>% 
+  rename_at(vars(day_names_old),~day_names_new) %>% 
+  flextable() %>% 
+  #  set_header_df(mapping = data.frame(keys = colnames(TableFileLFDCS), values = file_col_names, 
+  #                                    stringsAsFactors = FALSE), key = "keys" ) %>%
+  set_table_properties(layout = "autofit", width = 1) %>%
+  theme_booktabs() %>% 
+  font(fontname = "Segoe UI")
+
+```
