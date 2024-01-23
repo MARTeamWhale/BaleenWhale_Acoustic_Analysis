@@ -353,10 +353,12 @@ These are summary tables of the LFDCS detector performance for `r deployment_met
 \
 **Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$deployment` dataset.
 ```{r detector_performance_table_file, message=FALSE}
+detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
+                              r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
+  mutate(Species= case_when(Species=="Bm"~"BmT", TRUE~Species))
 
-detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)
-
-annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
+                               r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
 
 detec_list<- c('filename'='filename','BWT-3'='3_BmT',"BWT-4"='4_BmT',"FW-2"='2_Bp',"FW-3"='3_Bp',
                "SW-2"='2_Bb',"SW-4"='4_Bb',"HB-2"='2_Mn',"HB-3"='3_Mn')
@@ -371,10 +373,8 @@ detections_file <-detections %>%
   pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
   rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
   replace(is.na(.),0) %>%  # any files they weren't detected get a zero
-  
   { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
     else select(.,any_of(detec_list_BmA)) } %>% 
-  
   group_by(filename) %>% 
   summarise(across(where(is.numeric),sum)) %>% 
   ungroup()
@@ -386,7 +386,8 @@ annotations_files <- annotations %>%
   filter(Species %in% c("BW","FW","SW","HB")) %>% 
   mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
                              Species=='BW' & V25=='A'~'BWA',
-                             TRUE~Species)) %>% 
+                             TRUE~Species)) %>%
+  filter(!V25 %in% c("AU","RF")) %>% 
   distinct() %>%
   mutate(Species= fct_expand(Species,sp_list)) %>% 
   pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
@@ -410,9 +411,9 @@ TableFileLFDCS<- TableFileLFDCS %>%
   mutate(Nfileswdetec = as.numeric(colSums(Filedata[, rownames(TableFileLFDCS)] * (rownames(TableFileLFDCS) %in% colnames(Filedata))))) %>%
   mutate(sp = str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+')) %>% 
   left_join(data.frame(NfileswAnn = colSums(Filedata[, unique(str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+'))] * 
-                                str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+') 
-                              %in% str_extract(colnames(Filedata),'[a-zA-Z]+'))) %>% 
-                      mutate(sp=rownames(.)), by="sp") %>% 
+                                              str_extract(rownames(TableFileLFDCS),'[a-zA-Z]+') 
+                                            %in% str_extract(colnames(Filedata),'[a-zA-Z]+'))) %>% 
+              mutate(sp=rownames(.)), by="sp") %>% 
   column_to_rownames('tier')%>% 
   select(!sp)
 
@@ -432,7 +433,7 @@ for (i in rownames(TableFileLFDCS)) {
   }
 }
 
-for (i in rownames(TableFileLFDCS2)) {
+for (i in rownames(TableFileLFDCS)) {
   
   if(!is.na(Filedata2[[i]])) {
     TableFileLFDCS[i,"Recall"]<-  recall(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
@@ -441,7 +442,7 @@ for (i in rownames(TableFileLFDCS2)) {
   }
 }
 
-for (i in rownames(TableFileLFDCS2)) {
+for (i in rownames(TableFileLFDCS)) {
   
   if(!is.na(Filedata2[[i]])) {
     TableFileLFDCS[i,"MCC"]<- mcc(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
