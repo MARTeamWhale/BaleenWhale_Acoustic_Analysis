@@ -33,7 +33,7 @@ missing_data_ends = c(" ")
 render_report = function(
   deployment, metadata, Bm_audible, missing_data, missing_data_starts, missing_data_ends) {
   
-  rmarkdown::render(here("RMarkdown Report",
+  rmarkdown::render(here("RMarkdown_Report",
     "Baleen_whale_analysis_report.Rmd"), 
       params = list(
         deployment = deployment,
