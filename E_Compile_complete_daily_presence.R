@@ -55,7 +55,7 @@ narw <-narw.in %>%
   summarise(definite= ifelse(1 %in% definite, 1,0),
             possible = ifelse(1 %in% possible, 1,0)) %>%
   ungroup() %>% 
-  mutate(Presence = case_when(definite>0 ~ 'D',
+  mutate(presence = case_when(definite>0 ~ 'D',
                               definite==0 & possible>0 ~ 'P',
                               definite==0 & possible==0 ~ 'N')) %>% 
   select(!c(definite, possible)) %>% 
@@ -82,7 +82,7 @@ big4 <- big4.in %>%
   summarise(definite= ifelse(1 %in% definite, 1,0),
             possible = ifelse(1 %in% possible, 1,0)) %>%
   ungroup() %>% 
-  mutate(Presence = case_when(definite>0 ~ 'D',
+  mutate(presence = case_when(definite>0 ~ 'D',
                               definite==0 & possible>0 ~ 'P',
                               definite==0 & possible==0 ~ 'N')) %>% 
   select(!c(definite, possible))
