@@ -353,21 +353,20 @@ These are summary tables of the LFDCS detector performance for `r deployment_met
 \
 **Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$deployment` dataset.
 ```{r detector_performance_table_file, message=FALSE}
-<<<<<<< HEAD
-detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
-                              r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
+
+detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
   mutate(Species= case_when(Species=="Bm"~"BmT", TRUE~Species))
 
 annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
                                r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
-=======
+
 detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
                               r"(\Validation\Arklite_Inputs\)",paste0(deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
   mutate(Species= case_when(Species=="Bm"~"BmT", TRUE~Species))
 
 annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
                                r"(\Results\)", deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
->>>>>>> c113ce9cf2872065c9c39e46099d8011b3842493
+
 
 detec_list<- c('filename'='filename','BWT-3'='3_BmT',"BWT-4"='4_BmT',"FW-2"='2_Bp',"FW-3"='3_Bp',
                "SW-2"='2_Bb',"SW-4"='4_Bb',"HB-2"='2_Mn',"HB-3"='3_Mn')
@@ -382,11 +381,8 @@ detections_file <-detections %>%
   pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
   rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
   replace(is.na(.),0) %>%  # any files they weren't detected get a zero
-<<<<<<< HEAD
+
   { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
-=======
-  { if (Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
->>>>>>> c113ce9cf2872065c9c39e46099d8011b3842493
     else select(.,any_of(detec_list_BmA)) } %>% 
   group_by(filename) %>% 
   summarise(across(where(is.numeric),sum)) %>% 
