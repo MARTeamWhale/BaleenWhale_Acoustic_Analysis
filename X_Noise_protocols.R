@@ -17,7 +17,7 @@ if (!require("pacman")) install.packages("pacman")
 library(pacman)
 p_load(tidyverse,lubridate,readxl,here)
 
-options(digits.secs = 3) 
+options(digits.secs = 0) 
 
 ## Change these ##
 
@@ -88,15 +88,16 @@ metadata <- read_csv(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metad
   filter(Deployment == deployment_code)
 
 #read in LTSA logger csv
-LTSA_data <-read_csv(paste0(ltsa_folder,"//",deployment_code,"_",sp_name,tier,"_LTSA.csv"))
+LTSA_data <-read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+                              deployment_code, r"(\Results\)",deployment_code,"_",sp_name,tier,"_LTSA.xls"), sheet=1)
 
 #prep logger csv to convert to annotations  
   LTSA_log <- LTSA_data %>%   
   select("Input file","Event Number", "Species Code", "Call", "Start time", "End time") %>% #select needed columns
     rename_all(~str_replace_all(., "\\s+", "")) %>%  #remove spaces from column names
-  mutate(Starttime = as_datetime(Starttime, format = "%m/%d/%Y %H:%M:%S"), #convert logger start time to datetime
-         Endtime = as_datetime(Endtime, format = "%m/%d/%Y %H:%M:%S"), #convert logger end time to datetime
-         EventNumber = as_datetime(EventNumber, format = "%m/%d/%Y %H:%M:%S")) %>%  #convert date of logger to datetime
+  mutate(Starttime = as_datetime(Starttime), #convert logger start time to datetime
+         Endtime = as_datetime(Endtime), #convert logger end time to datetime
+         EventNumber = as_datetime(EventNumber)) %>%  #convert date of logger to datetime
   rowwise() %>% 
   mutate(Filename = audio$Filename[max(which(audio$filedate <= Starttime))], # reads in filename based on annotation Starttime
          datestring = str_extract(Filename, "\\d{8}\\w\\d{6}\\w"),
