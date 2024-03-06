@@ -59,7 +59,7 @@ lfdcsHF<-lfdcs_dataHF%>%
   mutate(StartTime = as.numeric(StartTime),
          StartDateTime = as_datetime(StartTime))%>%
   rowwise() %>% 
-  mutate(Filename = audio$Filename[max(which(audio$filedate <= StartDateTime))]) %>% 
+  mutate(Filename = audio$Filename[audio$filedate == max(audio$filedate[which(audio$filedate<=StartDateTime)])]) %>%
   ungroup()%>%
   select(-c(StartTime, StartDateTime))
 
@@ -97,7 +97,7 @@ lfdcsLF<-lfdcs_dataLF%>%
   mutate(StartTime = as.numeric(StartTime),
          StartDateTime = as_datetime(StartTime))%>%
   rowwise() %>% 
-  mutate(Filename = audio$Filename[max(which(audio$filedate <= StartDateTime))]) %>% 
+  mutate(Filename = audio$Filename[audio$filedate == max(audio$filedate[which(audio$filedate<=StartDateTime)])]) %>%
   ungroup()%>%
   select(-c(StartTime, StartDateTime))
 
