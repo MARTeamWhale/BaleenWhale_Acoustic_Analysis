@@ -51,7 +51,7 @@ sp_HF_code <- c("1"="Bb","2"="Bb","3"="Bb","5"="Eg",'6'="Eg",'7'="Eg",'8'="Eg",'
                 '30'="BmA",'31'="BmA",'32'="BmA",'33'="BmA",'34'="BmA")
 
 lfdcsHF<-lfdcs_dataHF%>%
-  filter(!row_number() %in% c(1:27))%>%
+  filter(!row_number() %in% c(1:36))%>%
  select(c(V1,V2,V9))%>%
   rename(Species=V1,
          StartTime = V2,
