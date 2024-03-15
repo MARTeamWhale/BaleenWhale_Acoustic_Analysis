@@ -27,7 +27,10 @@ file_list <- list.files(file_path, pattern = ".log", full.names = TRUE)
 # Then merge them together into a single dataframe
 
 annomerge <- rbindlist(sapply(file_list, fread, simplify = FALSE, USE.NAMES = TRUE, fill=TRUE), fill= TRUE)%>%
-  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile)
+  mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
+  mutate(Deployment= deployment_code,
+         Station= str_extract(Deployment, "^[^_]+")) 
+  
 
 
 # Export csv file
