@@ -392,11 +392,11 @@ detections_file <-detections %>%
 annotations_files <- annotations %>%
   mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
   select(filename,Species,V25) %>% 
+  filter(V25 %in% c("IF","A","IS","FF","NS","SG")) %>%
   filter(Species %in% c("BW","FW","SW","HB")) %>% 
   mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
                              Species=='BW' & V25=='A'~'BWA',
                              TRUE~Species)) %>%
-  filter(!V25 %in% c("AU","RF")) %>% 
   distinct() %>%
   mutate(Species= fct_expand(Species,sp_list)) %>% 
   pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
@@ -502,6 +502,7 @@ annotations_day <- annotations %>%
   select(filename,Species,V25) %>%
   
   filter(Species %in% c("BW","FW","SW","HB")) %>% 
+  filter(V25 %in% c("IF","A","IS","FF","NS","SG")) %>%
   mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
                              Species=='BW' & V25=='A'~'BWA',
                              TRUE~Species)) %>% 
