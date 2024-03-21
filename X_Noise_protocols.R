@@ -23,25 +23,25 @@ options(digits.secs = 0)
 
 deployment_code <- "XXX_####_##"
 
-wav_folder <-  r"(F:\MGL_2018_09\AMAR194.1.8000.M36-V35-100)" #copy file path to recording folder on working hard drive, paste inside r"( )"
+wav_folder <-  r"(PATH TO WAV FILES HERE)" #copy file path to recording folder on working hard drive, paste inside r"( )"
 
 # specify target species:
-# Bm	= Blue whale     Bp	= Fin whale     Bb	= Sei whale     Mn	= Humpback whale
+# BmT	= Blue whale tonal  BmA= Blue whale audible     Bp	= Fin whale     Bb	= Sei whale     Mn	= Humpback whale
 
 sp_name <- "Bm"
 
 #specify the tier of a species to validate:
-# Blue whale: 3 or 4   Fin Whale: 2 or 3  Sei Whale: 2 or 4   Humpback Whale: 2 or 3
+# Blue whale tonal: 3 or 4  Blue whale audible: 2 or 4   Fin Whale: 2 or 3  Sei Whale: 2 or 4   Humpback Whale: 2 or 3
 
-tier <- "4"
+tier <- "#"
 
 #specify the date of the most updated tier
 
-tier_date <- "2023-09-15"
+tier_date <- "YYYY-MM-DD"
 
 sampling_rate = "8000.0" #change to the sampling rate of the deployment
 
-operator = "MACKLING" #Analysts last name and first initial
+operator = "LASTNAMEFIRSTINITIAL" #Analysts last name and first initial
 
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
 ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ### ###
