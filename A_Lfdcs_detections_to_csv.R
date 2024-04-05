@@ -4,7 +4,7 @@
 # Authors: G. Macklin and J. Stanistreet 2022
 
 
-# Download and install packages if not already installed: tidyverse, lubridate, readxl, here
+# Download and install packages if not already installed: pacman
 if (!require("pacman")) install.packages("pacman")
 
 # Then open the packages
@@ -15,13 +15,14 @@ p_load(tidyverse,lubridate,readxl)
 ### Change these ####
 
 deployment_code ="STN_YYYY_MM" ###Deployment code here
+deployment_code ="XXX_####_##" ###Deployment code here
 
-analyst1 = "GM" ## HF analyst initial names (from lfdcs output filename)
+analyst1 = "XX" ## HF analyst initial names (from lfdcs output filename)
 
-analyst2 = "GM" ## LF analyst initial names (from lfdcs output filename)
 
-Folderpath <- r"(FILE PATH TO .WAV FILES)"   #path to .wav folders on working hard drive
+Folderpath <- r"(PATH TO WAV FOLDER)"   #path to .wav folders on working hard drive
 
+Bm_audible = TRUE # If blue whale audible calls were detected, mark TRUE. If not, mark FALSE
 
 ### Run These ####
 
@@ -51,7 +52,7 @@ sp_HF_code <- c("1"="Bb","2"="Bb","3"="Bb","5"="Eg",'6'="Eg",'7'="Eg",'8'="Eg",'
                 '30'="BmA",'31'="BmA",'32'="BmA",'33'="BmA",'34'="BmA")
 
 lfdcsHF<-lfdcs_dataHF%>%
-  filter(!row_number() %in% c(1:36))%>%
+  filter(if (Bm_audible==TRUE) row_number() > 36 else row_number() > 27) %>% 
  select(c(V1,V2,V9))%>%
   rename(Species=V1,
          StartTime = V2,
@@ -59,7 +60,7 @@ lfdcsHF<-lfdcs_dataHF%>%
   mutate(StartTime = as.numeric(StartTime),
          StartDateTime = as_datetime(StartTime))%>%
   rowwise() %>% 
-  mutate(Filename = audio$Filename[audio$filedate == max(audio$filedate[which(audio$filedate<=StartDateTime)])]) %>%
+  mutate(Filename = audio$Filename[max(which(audio$filedate <= StartDateTime))]) %>% 
   ungroup()%>%
   select(-c(StartTime, StartDateTime))
 
@@ -97,7 +98,7 @@ lfdcsLF<-lfdcs_dataLF%>%
   mutate(StartTime = as.numeric(StartTime),
          StartDateTime = as_datetime(StartTime))%>%
   rowwise() %>% 
-  mutate(Filename = audio$Filename[audio$filedate == max(audio$filedate[which(audio$filedate<=StartDateTime)])]) %>%
+  mutate(Filename = audio$Filename[max(which(audio$filedate <= StartDateTime))]) %>% 
   ungroup()%>%
   select(-c(StartTime, StartDateTime))
 
