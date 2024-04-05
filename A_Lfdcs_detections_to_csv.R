@@ -14,11 +14,11 @@ p_load(tidyverse,lubridate,readxl)
 
 ### Change these ####
 
-deployment_code ="STN_YYYY_MM" ###Deployment code here
 deployment_code ="XXX_####_##" ###Deployment code here
 
 analyst1 = "XX" ## HF analyst initial names (from lfdcs output filename)
 
+analyst2 = "XX" ## LF analyst initial names (from lfdcs output filename)
 
 Folderpath <- r"(PATH TO WAV FOLDER)"   #path to .wav folders on working hard drive
 
