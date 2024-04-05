@@ -10,10 +10,10 @@ format: "pipe"
 params:
   deployment: ""
   metadata: ""
-  Bm_audible: 
-  missing_data: 
+  Bm_audible:
+  missing_data:
   missing_data_starts: 
-  missing_data_ends: 
+  missing_data_ends:
 always_allow_html: TRUE
 
 ---
@@ -35,7 +35,7 @@ deploymentm<-str_replace_all(params$deployment, "_", "-")
 metadata<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metadata)","\\", params$metadata))
 
 # input data: baleen whale daily presence csv
-csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
+csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
                             r"(\Results\)", paste(params$deployment,"_baleenwhale_dailypresence.csv", sep="")))
 
 ## create named list of possible baleen whale species/call groups that may occur in data
@@ -94,17 +94,17 @@ no_data_periods <- tibble(year = as_factor(c(deployment_metadata$start_year, dep
                           end_dates = c(deployment_metadata$start-1, as.Date(paste0(deployment_metadata$end_year, "-12-31"))),
                           data_gap = 0) %>%
   # if missing_data = TRUE, add additional missing data period(s)
-  {if (params$missing_data) rbind(., list(year = as_factor(year(missing_data_starts)),
-                                          start_dates = as.Date(missing_data_starts),
-                                          end_dates = as.Date(missing_data_ends),
-                                          data_gap = rep_len(1,length.out = length(missing_data_starts)))) else .}
+  {if (params$missing_data) rbind(., list(year = as_factor(year(params$missing_data_starts)),
+                                          start_dates = as.Date(params$missing_data_starts),
+                                          end_dates = as.Date(params$missing_data_ends),
+                                          data_gap = rep_len(1,length.out = length(params$missing_data_starts)))) else .}
  
 # if missing_data=TRUE, generate vector of missing dates, calculate number of missing days, and subtract from recording effort
 
 if (params$missing_data){
   
-  missing_dates_list <- mapply(seq.Date, as.Date(missing_data_starts), as.Date(missing_data_ends), by = 1)
-  missing_dates <- tibble(effort_date = as.Date(unlist(missing_dates_list, use.names = FALSE)))
+  missing_dates_list <- mapply(seq.Date, as.Date(params$missing_data_starts), as.Date(params$missing_data_ends), by = 1)
+  missing_dates <- tibble(effort_date = as.Date(unlist(params$missing_dates_list, use.names = FALSE)))
   
   # get total number of missing days
   subdays <- length(missing_dates$effort_date)
@@ -392,11 +392,12 @@ detections_file <-detections %>%
 annotations_files <- annotations %>%
   mutate(filename = str_extract(Soundfile, "[^\\\\]*$"), .after=Soundfile) %>% 
   select(filename,Species,V25) %>% 
-  filter(V25 %in% c("IF","A","IS","FF","NS","SG")) %>%
   filter(Species %in% c("BW","FW","SW","HB")) %>% 
+  filter(V25 %in% c("IF","A","IS","FF","NS","SG")) %>%
   mutate(Species = case_when(Species=='BW' & V25=='IF'~'BWT',
                              Species=='BW' & V25=='A'~'BWA',
                              TRUE~Species)) %>%
+  filter(!V25 %in% c("AU","RF")) %>% 
   distinct() %>%
   mutate(Species= fct_expand(Species,sp_list)) %>% 
   pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
