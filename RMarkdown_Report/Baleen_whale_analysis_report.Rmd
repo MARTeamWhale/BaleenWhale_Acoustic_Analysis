@@ -12,7 +12,7 @@ params:
   metadata: ""
   Bm_audible:
   missing_data:
-  missing_data_starts: 
+  missing_data_starts:
   missing_data_ends:
 always_allow_html: TRUE
 
@@ -360,13 +360,6 @@ detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\
 annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
                                r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
 
-detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
-                              r"(\Validation\Arklite_Inputs\)",paste0(deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
-  mutate(Species= case_when(Species=="Bm"~"BmT", TRUE~Species))
-
-annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment,
-                               r"(\Results\)", deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
-
 
 detec_list<- c('filename'='filename','BWT-3'='3_BmT',"BWT-4"='4_BmT',"FW-2"='2_Bp',"FW-3"='3_Bp',
                "SW-2"='2_Bb',"SW-4"='4_Bb',"HB-2"='2_Mn',"HB-3"='3_Mn')
@@ -428,37 +421,38 @@ TableFileLFDCS<- TableFileLFDCS %>%
   select(!sp)
 
 Filedata2 <- Filedata %>% 
-  mutate_if(sapply(Filedata, is.numeric),as.factor)
-
-Filedata2<-Filedata2 %>% 
-  mutate(across(everything(), factor, levels = c("0","1"))) %>%
+  mutate_if(sapply(Filedata, is.numeric),as.factor) %>% 
   mutate_if(sapply(Filedata2, is.factor), fct_rev)
 
+
 for (i in rownames(TableFileLFDCS)) {
-  
-  if(!is.na(Filedata2[[i]])) {
-    TableFileLFDCS[i,"Precision"]<-  precision(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
-  }
-  else {TableFileLFDCS[i,"Precision"]<- NA
-  }
+ 
+  precision.value <- unlist(precision(Filedata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+  if (!is.na(precision.value)) {
+  TableFileLFDCS[i, "Precision"] <- precision.value
+} else {
+  TableFileLFDCS[as.character(i), "Precision"] <- NA
+}
 }
 
 for (i in rownames(TableFileLFDCS)) {
-  
-  if(!is.na(Filedata2[[i]])) {
-    TableFileLFDCS[i,"Recall"]<-  recall(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
-  }
-  else {TableFileLFDCS[i,"Recall"]<- NA
-  }
+ 
+  recall.value <- unlist(recall(Filedata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+  if (!is.na(recall.value)) {
+  TableFileLFDCS[i, "Recall"] <- recall.value
+} else {
+  TableFileLFDCS[as.character(i), "Recall"] <- NA
+}
 }
 
 for (i in rownames(TableFileLFDCS)) {
-  
-  if(!is.na(Filedata2[[i]])) {
-    TableFileLFDCS[i,"MCC"]<- mcc(Filedata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
-  }
-  else {TableFileLFDCS[i,"MCC"]<- NA
-  }
+ 
+  mcc.value <- unlist(mcc(Filedata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+  if (!is.na(mcc.value)) {
+  TableFileLFDCS[i, "MCC"] <- mcc.value
+} else {
+  TableFileLFDCS[as.character(i), "MCC"] <- NA
+}
 }
 
 ## create table
@@ -541,18 +535,18 @@ TableDayLFDCS<- TableDayLFDCS %>%
   column_to_rownames('tier')%>% 
   select(!sp)
   
-
 Daydata2 <-Daydata %>% 
-  mutate_if(sapply(Daydata, is.numeric),as.factor)
-
-Daydata2<-Daydata2 %>% 
-  mutate(across(everything(), factor, levels = c("0","1"))) %>%
+  mutate_if(sapply(Daydata, is.numeric),as.factor) %>% 
+  mutate(across(where(is.factor), factor, levels = c("0","1"))) %>%
   mutate_if(sapply(Daydata2, is.factor), fct_rev)
 
 for (i in rownames(TableDayLFDCS)) {
   
-  if(!is.na(Daydata2[[i]])) {
-    TableDayLFDCS[i,"Precision"]<-  precision(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+   precision.value <- unlist(precision(Daydata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+   
+   if (!is.na(precision.value)) {
+     
+    TableDayLFDCS[i,"Precision"]<- precision.value
   }
   else {TableDayLFDCS[i,"Precision"]<- NA
   }
@@ -560,8 +554,11 @@ for (i in rownames(TableDayLFDCS)) {
 
 for (i in rownames(TableDayLFDCS)) {
   
-  if(!is.na(Daydata2[[i]])) {
-    TableDayLFDCS[i,"Recall"]<-  recall(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+   recall.value <- unlist(recall(Daydata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+   
+   if (!is.na(recall.value)) {
+     
+    TableDayLFDCS[i,"Recall"]<- recall.value
   }
   else {TableDayLFDCS[i,"Recall"]<- NA
   }
@@ -569,8 +566,11 @@ for (i in rownames(TableDayLFDCS)) {
 
 for (i in rownames(TableDayLFDCS)) {
   
-  if(!is.na(Daydata2[[i]])) {
-    TableDayLFDCS[i,"MCC"]<- mcc(Daydata2,get(str_extract(i,'[a-zA-Z]+')),get(i))[3]
+   mcc.value <- unlist(mcc(Daydata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+   
+   if (!is.na(mcc.value)) {
+     
+    TableDayLFDCS[i,"MCC"]<- mcc.value
   }
   else {TableDayLFDCS[i,"MCC"]<- NA
   }
