@@ -10,9 +10,9 @@ format: "pipe"
 params:
   deployment: ""
   metadata: ""
-  Bm_audible:
-  missing_data:
-  missing_data_starts:
+  Bm_audible: 
+  missing_data: 
+  missing_data_starts: 
   missing_data_ends:
 always_allow_html: TRUE
 
@@ -420,9 +420,11 @@ TableFileLFDCS<- TableFileLFDCS %>%
   column_to_rownames('tier')%>% 
   select(!sp)
 
-Filedata2 <- Filedata %>% 
-  mutate_if(sapply(Filedata, is.numeric),as.factor) %>% 
-  mutate_if(sapply(Filedata2, is.factor), fct_rev)
+Filedata2 <- Filedata 
+
+Filedata2 <- Filedata2 %>% 
+  mutate_if(is.numeric,as.factor) %>% 
+  mutate_if(is.factor, fct_rev)
 
 
 for (i in rownames(TableFileLFDCS)) {
@@ -535,7 +537,9 @@ TableDayLFDCS<- TableDayLFDCS %>%
   column_to_rownames('tier')%>% 
   select(!sp)
   
-Daydata2 <-Daydata %>% 
+Daydata2 <-Daydata 
+
+Daydata2 <-Daydata2%>% 
   mutate_if(sapply(Daydata, is.numeric),as.factor) %>% 
   mutate(across(where(is.factor), factor, levels = c("0","1"))) %>%
   mutate_if(sapply(Daydata2, is.factor), fct_rev)
