@@ -13,7 +13,7 @@ params:
   Bm_audible: 
   missing_data: 
   missing_data_starts: 
-  missing_data_ends:
+  missing_data_ends: 
 always_allow_html: TRUE
 
 ---
@@ -68,7 +68,7 @@ deployment_metadata <- metadata %>%
   
   # select relevant deployment
   filter(Deployment == deploymentm) %>% 
-  
+ # drop_na %>%
   # set up latitude and longitude for cleaner output, format as numeric
   mutate(latitude = as.numeric(format(Latitude, digits=4)),
          longitude = as.numeric(format(Longitude, digits=4))) %>% 
@@ -373,7 +373,8 @@ detections_file <-detections %>%
   mutate(filename=Filename) %>% 
   pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
   rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
-  replace(is.na(.),0) %>%  # any files they weren't detected get a zero
+  mutate_at(vars(-c(Filename)), ~replace(., is.na(.), 0)) %>% 
+  #replace(is.na(.),0) %>%  # any files they weren't detected get a zero
 
   { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
     else select(.,any_of(detec_list_BmA)) } %>% 
@@ -393,7 +394,8 @@ annotations_files <- annotations %>%
   filter(!V25 %in% c("AU","RF")) %>% 
   distinct() %>%
   mutate(Species= fct_expand(Species,sp_list)) %>% 
-  pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
+  pivot_wider(names_from = Species, values_from = V25, values_fill = NA, names_expand = TRUE) %>% 
+  unchop(everything()) %>% 
   mutate(across(.cols=-c(filename), ~as.numeric(!is.na(.)))) %>% 
   group_by(filename) %>% 
   summarise(across(where(is.numeric),sum)) %>% 
@@ -424,12 +426,14 @@ Filedata2 <- Filedata
 
 Filedata2 <- Filedata2 %>% 
   mutate_if(is.numeric,as.factor) %>% 
-  mutate_if(is.factor, fct_rev)
+  mutate_at(vars(-filename), ~factor(., levels = c(1,0)))
+  
+
 
 
 for (i in rownames(TableFileLFDCS)) {
  
-  precision.value <- unlist(precision(Filedata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i))[3])
+  precision.value <- unlist(precision(Filedata2, str_extract(as.character(i), '[a-zA-Z]+'), as.character(i), na_rm=TRUE)[3])
   if (!is.na(precision.value)) {
   TableFileLFDCS[i, "Precision"] <- precision.value
 } else {
@@ -482,7 +486,7 @@ detections_day <-detections %>%
   mutate(filename=Filename) %>% 
   pivot_wider(names_from = Species, values_from = c(MD2,MD3,MD4)) %>% # so that there is a column for every species/tier
   rename_with(~str_remove(.,"MD"), everything()) %>%  # clean up name for my sanity
-  replace(is.na(.),0) %>%  # any files they weren't detected get a zero
+  mutate_at(vars(-c(Filename)), ~replace(., is.na(.), 0)) %>%   # any files they weren't detected get a zero
   { if (params$Bm_audible == FALSE) select(.,any_of(detec_list)) %>%  mutate(.,"BWA-2"=NA_real_, "BWA-4"=NA_real_, .after="BWT-4")
     else select(.,any_of(detec_list_BmA)) } %>% 
   group_by(filename) %>% 
@@ -506,6 +510,7 @@ annotations_day <- annotations %>%
   distinct() %>%
   mutate(Species= fct_expand(Species,sp_list)) %>% 
   pivot_wider(names_from = Species, values_from = V25, names_expand = TRUE) %>% 
+  unchop(everything()) %>% 
   mutate(across(.cols=-c(filename), ~as.numeric(!is.na(.)))) %>% 
   group_by(filename) %>% 
   summarise(across(where(is.numeric),sum)) %>% 
