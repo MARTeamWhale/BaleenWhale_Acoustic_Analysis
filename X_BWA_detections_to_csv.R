@@ -14,11 +14,10 @@ p_load(tidyverse,lubridate,readxl)
 
 ### Change these ####
 
-deployment_code ="EFC_2021_08" ###Deployment code here
+deployment_code =""
+analyst1 = "" ## HF analyst initial names (from lfdcs output filename)
 
-analyst1 = "GM" ## HF analyst initial names (from lfdcs output filename)
-
-Folderpath <- r"(\\142.2.83.52\whalenas5\MOORED_PAM_DATA\2021\08\EFC_2021_08\AMAR672.1.256000.d32)"   #path to .wav folders on working hard drive
+Folderpath <- r"()"   #path to .wav folders on working hard drive
 
 ### Run These ####
 
@@ -34,7 +33,7 @@ audio <- audio_data %>%
   mutate(datestring = str_extract(Filename, "\\d{8}\\w\\d{6}\\w")) %>%
   mutate(filedate = as_datetime(datestring, format="%Y%m%dT%H%M%SZ"))
 
-## Read LFDCS outputs and .wav filenames into R for Sei,Humpback, Blue whale audible and Right Whales  ##
+## Read LFDCS outputs and .wav filenames into R for Blue whale audible calls  ##
 
 lfdcs_fileBWA <- paste0(deployment_code,"_BWA","_BIO_",analyst1,".csv")
 
@@ -59,7 +58,7 @@ lfdcsBWA<-lfdcs_dataBWA%>%
   select(-c(StartTime, StartDateTime))
 
 
-## Make the detection sheet for Sei and Humpback ##
+## Make the detection sheet for blue whale audible calls ##
 
 detectionsBWA<- lfdcsBWA%>%
   transmute(Filename=Filename,
@@ -76,6 +75,9 @@ all.detect <-  read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5
                                r"(\Validation\ArkLite_Inputs\)",deployment_code,"_MBDetections.csv"))
 
 detectionsALL <-bind_rows(detectionsBWA,all.detect)%>%
+  group_by(Filename,Species) %>%
+  summarize(MD2 = sum(MD2), MD3 = sum(MD3), MD4 = sum(MD4)) %>%
+  ungroup() %>% 
   write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                    r"(\Validation\ArkLite_Inputs\)",deployment_code,"_MBDetections.csv"))
 
