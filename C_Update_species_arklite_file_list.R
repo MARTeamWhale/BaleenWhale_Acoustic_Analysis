@@ -20,33 +20,35 @@ p_load(tidyverse, lubridate)
 ######## INPUT (modify these lines) ########
 
 # specify deployment name:
-deployment_code <- "MGL_2018_09"
+deployment_code <- ""
 
 # specify the date on the most CURRENT annotations .csv file:
-annotation_date <- "2023-09-28"
+annotation_date <- ""
 
 # specify target species:
-# BmT	= Blue whale tonal  BmA	= Blue whale audible   Bp	= Fin whale     Bb	= Sei whale     Mn	= Humpback whale
+# BmT	= Blue whale tonal  BmA	= Blue whale audible   Bp	= Fin whale     
+# Bb	= Sei whale     Mn	= Humpback whale
 
-sp_name <- "Bm"
-
-# specify species code used in annotations:
-# BW	= Blue whale     FW	= Fin whale     SW	= Sei whale     HB	= Humpback whale
-
-sp_code <- "BW"
-
-#Specify the call category/type targeted by detector
-# IF = Blue whale tonals, # A = Blue whale audible  IS = Fin whale pulses  FF = Sei whale downsweeps   NS","SG = Humpback whale (all call types)
-
-sp_call <- c("IF")
+sp_name <- ""
 
 #specify the tier of a species to validate:
-# Blue whale: 3 or 4   Fin Whale: 2 or 3  Sei Whale: 2 or 4   Humpback Whale: 2 or 3
+# Blue whale tonal: 3 or 4  Blue whale audible: 2 or 4   Fin Whale: 2 or 3  
+# Sei Whale: 2 or 4   Humpback Whale: 2 or 3
 
-tier <- "4"
+tier <- ""
 
 
 ######## PROCESS (no need to modify the lines below) ########
+# 0) pre-set up
+
+sp_table <- tibble(sp_names = c("BmA","BmT","Bp","Bb","Mn"),
+                    sp_codes= c("BW","BW","FW","SW","HB"),
+                    sp_calls = c("A","IF","IS","FF", "NS,SG"))
+
+sp_code <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_codes)
+
+sp_call <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_calls)
+
 
 # 1) load files
 annotation_csv <- paste0(deployment_code,"_DPA_MB_Annotations_",annotation_date,".csv")
