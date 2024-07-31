@@ -41,13 +41,13 @@ tier <- ""
 ######## PROCESS (no need to modify the lines below) ########
 # 0) pre-set up
 
-sp_table <- tibble(sp_names = c("BmA","BmT","Bp","Bb","Mn"),
-                    sp_codes= c("BW","BW","FW","SW","HB"),
-                    sp_calls = c("A","IF","IS","FF", "NS,SG"))
+sp_table <- tibble(sp_names = c("BmA","BmT","Bp","Bb","Mn", "Mn"),
+                    sp_codes= c("BW","BW","FW","SW","HB", "HB"),
+                    sp_calls = c("A","IF","IS","FF", "NS","SG"))
 
-sp_code <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_codes)
+sp_code <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_codes) %>% unique()
 
-sp_call <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_calls)
+sp_call <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_calls) %>% unique()
 
 
 # 1) load files
