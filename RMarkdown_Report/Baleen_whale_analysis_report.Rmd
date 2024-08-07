@@ -172,7 +172,9 @@ daily_summary<-presence_data %>%
   group_by(spcallgroup) %>% 
   summarize(days_present = n()) %>%  
   mutate(percent_days_present = days_present/deployment_metadata$ndays*100) %>% 
-  ungroup()
+  ungroup()%>% 
+  right_join(tibble(spcallgroup=spcallgroup_label), by="spcallgroup") %>% 
+  replace_na(list(days_present=0, percent_days_present=0))
 
 # specify column names
 daily_col_names<-c("Species (call type) ", "Days present (#)", "Days present (%)")
