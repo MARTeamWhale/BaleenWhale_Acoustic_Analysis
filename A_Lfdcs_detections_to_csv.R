@@ -16,10 +16,6 @@ p_load(tidyverse,lubridate,readxl)
 
 deployment_code ="XXX_####_##" ###Deployment code here
 
-analyst1 = "XX" ## HF analyst initial names (from lfdcs output filename)
-
-analyst2 = "XX" ## LF analyst initial names (from lfdcs output filename)
-
 Folderpath <- r"(PATH TO WAV FOLDER)"   #path to .wav folders on working hard drive
 
 Bm_audible = TRUE # If blue whale audible calls were detected, mark TRUE. If not, mark FALSE
@@ -40,7 +36,8 @@ audio <- audio_data %>%
 
 ## Read LFDCS outputs and .wav filenames into R for Sei,Humpback, Blue whale audible and Right Whales  ##
 
-lfdcs_fileHF <- paste0(deployment_code,"_HF","_BIO_",analyst1,".csv")
+lfdcs_fileHF <- list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+                                  r"(\Validation\LFDCS_Outputs\)"), pattern = "_HF_")
 
 lfdcs_dataHF <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                 r"(\Validation\LFDCS_Outputs\)", lfdcs_fileHF), header= FALSE)
@@ -80,7 +77,8 @@ detectionsHF<- lfdcsHF%>%
 
 ## Read LFDCS output into R for Blue and Fin ##
 
-lfdcs_fileLF <- paste0(deployment_code,"_LF","_BIO_",analyst2,".csv")
+lfdcs_fileLF <- list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+                                  r"(\Validation\LFDCS_Outputs\)"), pattern = "_LF_")
 
 lfdcs_dataLF <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                 r"(\Validation\LFDCS_Outputs\)", lfdcs_fileLF), header= FALSE)
