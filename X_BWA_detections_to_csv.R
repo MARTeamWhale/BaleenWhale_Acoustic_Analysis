@@ -15,7 +15,6 @@ p_load(tidyverse,lubridate,readxl)
 ### Change these ####
 
 deployment_code =""
-analyst1 = "" ## HF analyst initial names (from lfdcs output filename)
 
 Folderpath <- r"()"   #path to .wav folders on working hard drive
 
@@ -35,7 +34,8 @@ audio <- audio_data %>%
 
 ## Read LFDCS outputs and .wav filenames into R for Blue whale audible calls  ##
 
-lfdcs_fileBWA <- paste0(deployment_code,"_BWA","_BIO_",analyst1,".csv")
+lfdcs_fileBWA <-list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+                                   r"(\Validation\LFDCS_Outputs\)"), pattern = "_BWA_")
 
 lfdcs_dataBWA <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
                                 r"(\Validation\LFDCS_Outputs\)", lfdcs_fileBWA), header= FALSE)
