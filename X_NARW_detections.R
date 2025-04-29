@@ -4,16 +4,18 @@ p_load(tidyverse,lubridate,readxl)
 ## Change these ##
 
 #audio folder
-wav_folder <- r"(D:\GLSW_2022_10\ST6436.192000.d24)"
+wav_folder <- r"()" #folder with recording .wav files
 
-deployment_code <- "GLSW_2022_10"
+deployment_code <- "AAA_####_##"
 
-analyst_initial <- "GM"
 
 ## Run these ##
 
+matlab_file <- list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+                                 deployment_code,"/Validation/"), pattern = "matlab")
+
 input <- read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
-                           deployment_code,"/Validation/",deployment_code,"_BIO_",analyst_initial,'_matlab.xlsx'), sheet=1)
+                           deployment_code,"/Validation/",matlab_file), sheet=1)
 
 pamlab_check <- input %>% 
   filter(Class_MATLAB != "Incorrect") %>% 
