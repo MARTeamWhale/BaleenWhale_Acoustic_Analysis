@@ -45,7 +45,10 @@ lfdcs_dataBWA <- read.csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise
 sp_HF_code <- c('30'="BmA",'31'="BmA",'32'="BmA",'33'="BmA",'34'="BmA")
 
 lfdcsBWA<-lfdcs_dataBWA%>%
-  filter(row_number() > 22) %>% 
+ {# Detect blank rows before modifying
+    blank_indices <- which(apply(., 1, function(row) all(is.na(row) | row == "")))
+    start_row <- blank_indices[2] + 1
+    cleaned <- slice(., start_row:nrow(.))} %>% 
   select(c(V1,V2,V9))%>%
   rename(Species=V1,
          StartTime = V2,
