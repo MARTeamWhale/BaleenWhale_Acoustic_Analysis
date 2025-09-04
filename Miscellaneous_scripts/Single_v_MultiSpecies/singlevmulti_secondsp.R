@@ -1,12 +1,16 @@
 library(pacman)
 
-p_load(tidyverse, purrr, ggpattern)
+p_load(tidyverse, purrr, ggpattern, here)
 
 #CHANGE THESE ----
 
-# species/calltype of interest
+# species/calltype(s) of interest
+# Blue whale infrasonic: BmT, Blue whale audible: BmA, Fin whale: Bp,
+# Sei whale": Bb, Humpback whale: Mn, Right whale: Eg
 
-single_sp = "BmA"
+single_sp = ""
+
+second_sp = ""
 
 
 # RUN THESE ----
@@ -108,20 +112,20 @@ detection.input <- bind_rows(dfs) %>% select(-`...3`)
 
 tier_list <- c(BmT="MD4",BmA="MD4",Bp="MD3",Bb="MD4",Mn="MD3", Eg="MD4")
 
-detections.BmA <- detection.input %>%
+detections.sing <- detection.input %>%
   filter(deployment %in% unique(all.results$deployment)) %>% 
   filter(Species == single_sp) %>% 
   filter(.data[[tier_list[[single_sp]]]] != 0) %>% 
   select(station,deployment,'filename'=Filename,'sp_code'=Species) %>% 
-  mutate(detection_BmA = 1) %>% 
+  mutate(detection_sing = 1) %>% 
   unique() 
 
-detections.Bb <- detection.input %>%
+detections.sec <- detection.input %>%
   filter(deployment %in% unique(all.results$deployment)) %>% 
-  filter(Species == "Bb") %>% 
+  filter(Species == second_sp) %>% 
   filter(.data[[tier_list[[single_sp]]]] != 0) %>% 
   select(station,deployment,'filename'=Filename,'sp_code'=Species) %>% 
-  mutate(detection_Bb = 1) %>% 
+  mutate(detection_sec = 1) %>% 
   unique() %>% 
   select(-sp_code)
 
@@ -133,10 +137,10 @@ results <- all.results %>%
   select(station,deployment,filename, sp_code,presence) %>% 
   unique() 
 
-day.results <- full_join(results,detections.BmA) %>% full_join(detections.Bb) %>% 
+day.results <- full_join(results,detections.sing) %>% full_join(detections.sec) %>% 
   mutate(presence = replace_na(presence,0),
-         detection_BmA = replace_na(detection_BmA,0),
-         detection_Bb = replace_na(detection_Bb,0)) %>% 
+         detection_sing = replace_na(detection_sing,0),
+         detection_sec = replace_na(detection_sec,0)) %>% 
   arrange(station,deployment,filename) %>% 
   
   mutate(datestring = str_extract(filename, "\\d{8}\\w\\d{6}\\w")) %>% 
@@ -144,17 +148,17 @@ day.results <- full_join(results,detections.BmA) %>% full_join(detections.Bb) %>
   
   group_by(station,deployment,sp_code,filedate) %>% 
   summarise(presence = sum(presence),
-            detection_BmA = sum(detection_BmA),
-            detection_Bb = sum(detection_Bb)) %>% 
+            detection_sing = sum(detection_sing),
+            detection_sec = sum(detection_sec)) %>% 
   ungroup() %>% 
-  mutate(sp_code = case_when((detection_BmA ==0 & detection_Bb>0)~"Bb", TRUE~'BmA'))
+  mutate(sp_code = case_when((detection_sing ==0 & detection_sec>0)~second_sp, TRUE~single_sp))
 
 fig.results <- day.results %>% 
   
   group_by(station,deployment,sp_code) %>% 
-  summarise(days_detect = sum(presence >0 & detection_BmA > 0),
-            days_nodetect = sum(presence>0 & detection_BmA ==0 & detection_Bb ==0),
-            days_seidetect = sum(presence>0 & detection_BmA ==0 & detection_Bb >0)) %>% 
+  summarise(days_detect = sum(presence >0 & detection_sing > 0),
+            days_nodetect = sum(presence>0 & detection_sing ==0 & detection_sec ==0),
+            days_seidetect = sum(presence>0 & detection_sing ==0 & detection_sec >0)) %>% 
   ungroup() %>%
   
   group_by(deployment) %>%
@@ -169,14 +173,14 @@ fig.results <- day.results %>%
                names_to = "detection",
                values_to = "days") %>% 
   mutate(detection = recode(as.character(detection),
-                            days_detect = "Presence, Detected by BmA Detector",
-                            days_nodetect = "Presence, Not Detected by BmA Detector",
-                            days_seidetect = "Presence, Detected by Bb Detector")) %>% 
-  mutate(detection = factor(detection, levels = c("Presence, Not Detected by BmA Detector","Presence, Detected by Bb Detector", "Presence, Detected by BmA Detector"))) 
+                            days_detect = "Presence, Detected by Target Species Detector",
+                            days_nodetect = "Presence, Not Detected by Target Species Detector",
+                            days_seidetect = "Presence, Detected by Secondary Species Detector")) %>% 
+  mutate(detection = factor(detection, levels = c("Presence, Not Detected by Target Species Detector","Presence, Detected by Secondary Species Detector", "Presence, Detected by Target Species Detector"))) 
 
 fig.results <- fig.results%>% 
-  filter(!(sp_code =="Bb" & detection %in% c("Presence, Detected by BmA Detector","Presence, Not Detected by BmA Detector"))) %>% 
-  filter(!(sp_code =="BmA" & detection %in% c("Presence, Detected by Bb Detector")))
+  filter(!(sp_code ==second_sp & detection %in% c("Presence, Detected by Target Species Detector","Presence, Not Detected by Target Species Detector"))) %>% 
+  filter(!(sp_code == single_sp & detection %in% c("Presence, Detected by Secondary Species Detector")))
 
 
 
@@ -194,7 +198,7 @@ for (i in years) {
   
   year.fig.results <- fig.results %>%filter(year == as.numeric(i))
   
-  percent.label <- year.fig.results%>% group_by(station) %>% mutate(days=sum(days)) %>% ungroup() %>% filter(sp_code=="BmA")
+  percent.label <- year.fig.results%>% group_by(station) %>% mutate(days=sum(days)) %>% ungroup() %>% filter(sp_code==single_sp)
   
   p <-ggplot()+
     
@@ -206,7 +210,7 @@ for (i in years) {
                      pattern_spacing = 0.01,
                      pattern_key_scale_factor = 0.6)+
     
-    scale_pattern_manual(values = c("Presence, Detected by BmA Detector" = "none", "Presence, Detected by Bb Detector"="none", "Presence, Not Detected by BmA Detector" = "stripe")) +
+    scale_pattern_manual(values = c("Presence, Detected by Target Species Detector" = "none", "Presence, Detected by Secondary Species Detector"="none", "Presence, Not Detected by Target Species Detector" = "stripe")) +
     scale_fill_manual(values = cols) +
     scale_pattern_fill_manual(values = cols) +
     
@@ -231,12 +235,12 @@ for (i in years) {
     guides(fill = "none", pattern = guide_legend(
       title = "",
       override.aes = list(
-        fill = c("Presence, Detected by BmA Detector" = cols["BmA"],
-                 "Presence, Detected by Bb Detector" = cols["Bb"],
-                 "Presence, Not Detected by BmA Detector" = cols["BmA"]),
-        pattern_fill = c("Presence, Detected by BmA Detector" = cols["BmA"],
-                         "Presence, Detected by Bb Detector" = cols["Bb"],
-                         "Presence, Not Detected by BmA Detector" = cols["BmA"]),
+        fill = c("Presence, Detected by Target Species Detector" = cols[single_sp],
+                 "Presence, Detected by Secondary Species Detector" = cols[second_sp],
+                 "Presence, Not Detected by Target Species Detector" = cols[single_sp]),
+        pattern_fill = c("Presence, Detected by Target Species Detector" = cols[single_sp],
+                         "Presence, Detected by Secondary Species Detector" = cols[second_sp],
+                         "Presence, Not Detected by Target Species Detector" = cols[single_sp]),
         pattern_colour = "black")))
   
   print(p)
