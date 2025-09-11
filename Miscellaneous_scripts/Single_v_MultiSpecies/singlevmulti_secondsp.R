@@ -106,7 +106,7 @@ for (subfolder in subfolders) {
   
 }
 
-detection.input <- bind_rows(dfs) %>% select(-`...3`)
+detection.input <- bind_rows(dfs)
 
 ## isolate detections of interest
 
@@ -247,5 +247,7 @@ for (i in years) {
   
   plotname <- paste0(i,"_",single_sp,"_singlevmulti_sei.png")
   
-  ggsave(here(Miscellaneous_scripts, Single_v_MultiSpecies,output_figures,plotname),p, width = 9.5, height =  4.5, units = "in" )
+  ggsave(here('Miscellaneous_scripts', 'Single_v_MultiSpecies','output_figures',plotname),p, width = 9.5, height =  4.5, units = "in" )
 }
+
+
