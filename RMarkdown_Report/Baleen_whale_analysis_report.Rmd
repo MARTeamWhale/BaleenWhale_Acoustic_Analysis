@@ -1,12 +1,13 @@
 ---
 title: "Baleen Whale Acoustic Analysis Report"
 date: "Date created: `r format(Sys.time(), '%Y-%m-%d')`"
-output: 
+output:
+  html_document:
+    df_print: paged
   word_document:
     reference_docx: word_styles_reference_01.docx
-    fig_caption: TRUE
-format: "pipe"
-
+    fig_caption: true
+format: pipe
 params:
   deployment: ""
   metadata: ""
@@ -14,8 +15,7 @@ params:
   missing_data: 
   missing_data_starts: 
   missing_data_ends: 
-always_allow_html: TRUE
-
+always_allow_html: true
 ---
 
 ```{r setup, include=FALSE}
@@ -207,7 +207,7 @@ daily_summary_table
 ```{r fig1, fig.width=6.5, fig.height=5, fig.cap="Daily presence of baleen whale calls"}
 
 # assign colors to species for plotting
-cols = c("#A6CEE3", "#1F78B4","#7570B3", "#E7298A", "#66A61E", "darkorange", "darkred")
+cols = c("#A6CEE3", "#1F78B4","#7570B3", "#E7298A", "#F0E442", "#66A61E", "#D55E00")
 names(cols) <- levels(presence_data$spcallgroup)
 
 # create daily presence figure  
