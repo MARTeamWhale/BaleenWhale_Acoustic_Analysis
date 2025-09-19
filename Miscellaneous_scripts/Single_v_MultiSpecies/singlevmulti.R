@@ -31,7 +31,7 @@ for (subfolder in subfolders) {
   deployment <- basename(subfolder) #extract deployment name
   
   # Read the CSV file
-  csv_file <- list.files(paste0(subfolders,"\\Results\\"), pattern = paste0(deployment, "_DPA_MB_Annotations_FINAL.csv"), #find the presence csv
+  csv_file <- list.files(paste0(subfolders,"\\Results\\"), pattern = paste0(deployment, "_FINAL.csv"), #find the presence csv
                          full.names = TRUE)
   
   df <- read_csv(csv_file) #read presence csv

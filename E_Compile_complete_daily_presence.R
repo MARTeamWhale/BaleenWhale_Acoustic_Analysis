@@ -30,7 +30,7 @@ metadata <- metadata.in %>%
 narw.in <- list.files(folder_path, pattern = "matlab.xlsx", full.names = TRUE) %>% 
   read_excel(sheet=1)
 
-big4.in <- list.files(folder_path, pattern = "DPA_MB_Annotations_FINAL.csv", full.names = TRUE) %>% 
+big4.in <- list.files(folder_path, pattern = "FINAL.csv", full.names = TRUE) %>% 
   read_csv()
 
 if(include.minke == TRUE){
