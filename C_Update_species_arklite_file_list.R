@@ -19,6 +19,9 @@ p_load(tidyverse, lubridate)
 
 ######## INPUT (modify these lines) ########
 
+#specify data source
+data_source <- ""  # MAR if from any DFO-MAR projects, otherwise code for the folder 
+
 # specify deployment name:
 deployment_code <- ""
 
@@ -53,10 +56,10 @@ sp_call <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_calls) %>% uniqu
 # 1) load files
 annotation_csv <- paste0(deployment_code,"_DPA_MB_Annotations_",annotation_date,".csv")
 
-annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                                r"(\Results\interim_csvs\)", annotation_csv))
 
-species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+species_detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                                       r"(\Validation\Arklite_Inputs\)", paste0(deployment_code, "_", sp_name,tier, ".csv")), col_names = "filename") # very important to specify col_names here
 
 # 2) add filename and filedate variables to annotation table
@@ -92,5 +95,5 @@ today<-Sys.Date()
 output_file<-paste0(deployment_code, "_", sp_name,tier, "-updated", today, ".csv")
 
 #export as csv, removing column header
-write_csv(file_list, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+write_csv(file_list, paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                             r"(\Validation\Arklite_Inputs\)", output_file), col_names = FALSE)

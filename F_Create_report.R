@@ -43,7 +43,7 @@ render_report = function(
         missing_data_starts = missing_data_starts,
         missing_data_ends = missing_data_ends
       ),
-    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+    output_file = paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR\)",
                          deployment,
                          r"(\Results\)", 
                          paste0(deployment, "_analysis_report_", Sys.Date(), ".docx"))

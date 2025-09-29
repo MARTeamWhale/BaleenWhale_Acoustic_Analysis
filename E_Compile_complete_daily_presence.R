@@ -7,15 +7,19 @@ p_load(tidyverse, lubridate,readxl)
 
 deployment_code <- "STN_YYYY_MM" # input deployment code
 
+data_source <- ""  # MAR if from any DFO-MAR projects, otherwise code for the folder 
+
 #Specify if Minke log exists
 include.minke <- TRUE
 
 # RUN THESE ----
 
-folder_path <-  paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+folder_path <-  paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                        r"(\Results\)")
 
 ## Bring in metadata ----
+
+if (data_source == "MAR"){
 metadata.in<- read_csv(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metadata\deployment_summary.csv)")
 
 metadata <- metadata.in %>% 
@@ -23,7 +27,7 @@ metadata <- metadata.in %>%
   filter(Deployment==deployment_code) %>% 
   transmute(Deployment, start = as_date(`In-water_start`)+1, 
             end = as_date(`In-water_end`)-1)
-
+}
 
 ##Import all results----
 
@@ -131,9 +135,12 @@ baleen.daily <- rbind(big4,narw) %>%
 }
 
 # remove days not included in effort (based on full 24-hour recordings)
+
+if (data_source == "MAR"){
 baleen.daily<-baleen.daily %>% 
   filter(detecdate>=metadata$start) %>% 
   filter(detecdate<=metadata$end)
+}
 
 ## write to csv ----
 write_csv(baleen.daily, paste0(folder_path,deployment_code,"_baleenwhale_dailypresence.csv"))

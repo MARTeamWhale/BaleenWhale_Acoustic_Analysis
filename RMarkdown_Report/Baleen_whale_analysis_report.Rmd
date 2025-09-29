@@ -35,7 +35,7 @@ deploymentm<-str_replace_all(params$deployment, "_", "-")
 metadata<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metadata)","\\", params$metadata))
 
 # input data: baleen whale daily presence csv
-csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
+csv_data<-read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR\)",params$deployment,
                             r"(\Results\)", paste(params$deployment,"_baleenwhale_dailypresence.csv", sep="")))
 
 ## create named list of possible baleen whale species/call groups that may occur in data
@@ -356,10 +356,10 @@ These are summary tables of the LFDCS detector performance for `r deployment_met
 **Table 1:** LFDCS detector performance per file, per tier, for each species for the `r deployment_metadata$deployment` dataset.
 ```{r detector_performance_table_file, message=FALSE}
 
-detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
+detections <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR\)",params$deployment,r"(\Validation\Arklite_Inputs\)",paste0(params$deployment,'_MBDetections.csv')), show_col_types = FALSE)%>% 
   mutate(Species= case_when(Species=="Bm"~"BmT", TRUE~Species))
 
-annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",params$deployment,
+annotations <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR\)",params$deployment,
                                r"(\Results\)", params$deployment,"_DPA_MB_Annotations_FINAL.csv", sep=""))
 
 

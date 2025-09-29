@@ -16,7 +16,7 @@ second_sp = ""
 # RUN THESE ----
 
 # Set the path to your main folder
-main_folder <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments)" # direct to all deployments
+main_folder <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR)" # direct to all deployments
 
 # List all subfolders
 subfolders <- list.files(main_folder, full.names = TRUE)#list all subfolders (aka Validation, Results)

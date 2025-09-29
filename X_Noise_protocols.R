@@ -21,6 +21,8 @@ options(digits.secs = 0)
 
 ## Change these ##
 
+data_source <- ""  # MAR if from any DFO-MAR projects, otherwise code for the folder
+
 deployment_code <- "XXX_####_##"
 
 wav_folder <-  r"(PATH TO WAV FILES HERE)" #copy file path to recording folder on working hard drive, paste inside r"( )"
@@ -54,7 +56,7 @@ ltsa_folder <- dir.create(paste0(wav_folder,"\\",ltsa_folder_name)) # creates th
 
 
 #Lists all files in a tier, to be extracted for LTSA
-file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+file_list <- read_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",
                              deployment_code, r"(\Validation\Arklite_Inputs\)",
                            paste0(deployment_code, "_", sp_name,tier,"-updated",tier_date ,".csv")), col_names = "filename") %>% 
   mutate(filepath= paste0(wav_folder, "\\", filename)) %>% 
@@ -88,7 +90,7 @@ metadata <- read_csv(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_2\PAM_metad
   filter(Deployment == deployment_code)
 
 #read in LTSA logger csv
-LTSA_data <-read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+LTSA_data <-read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",
                               deployment_code, r"(\Results\)",deployment_code,"_",sp_name,tier,"_LTSA.xls"), sheet=1)
 
 #prep logger csv to convert to annotations  

@@ -8,20 +8,21 @@ wav_folder <- r"()" #folder with recording .wav files
 
 deployment_code <- "AAA_####_##"
 
+data_source <- ""  # MAR if from any DFO-MAR projects, otherwise code for the folder
 
 ## Run these ##
 
-matlab_file <- list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+matlab_file <- list.files(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",
                                  deployment_code,"/Validation/"), pattern = "matlab")
 
-input <- read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",
+input <- read_excel(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",
                            deployment_code,"/Validation/",matlab_file), sheet=1)
 
 pamlab_check <- input %>% 
   filter(Class_MATLAB != "Incorrect") %>% 
   select(FileName) %>% 
   distinct() %>% 
-  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",deployment_code,
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                    r"(\Validation\ArkLite_Inputs\)",deployment_code,"_pamlabcheck.csv"), col_names = FALSE)
 
 
