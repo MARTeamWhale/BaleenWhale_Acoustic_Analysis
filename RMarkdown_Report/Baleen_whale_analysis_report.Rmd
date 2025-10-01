@@ -2,8 +2,6 @@
 title: "Baleen Whale Acoustic Analysis Report"
 date: "Date created: `r format(Sys.time(), '%Y-%m-%d')`"
 output:
-  html_document:
-    df_print: paged
   word_document:
     reference_docx: word_styles_reference_01.docx
     fig_caption: true
