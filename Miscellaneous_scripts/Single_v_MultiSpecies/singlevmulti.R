@@ -8,7 +8,7 @@ p_load(tidyverse, purrr, ggpattern)
 # Blue whale infrasonic: BmT, Blue whale audible: BmA, Fin whale: Bp,
 # Sei whale": Bb, Humpback whale: Mn, Right whale: Eg
 
-single_sp = "Bp"
+single_sp = ""
 
 
 # RUN THESE ----
@@ -17,7 +17,7 @@ single_sp = "Bp"
 main_folder <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR)" # direct to all deployments
 
 # List all subfolders
-subfolders <- list.dirs(main_folder, full.names = TRUE)#list all subfolders (aka Validation, Results)
+subfolders <- list.dirs(main_folder, full.names = TRUE, recursive = FALSE)#list all subfolders (aka Validation, Results)
 subfolders <-subfolders[!str_detect(subfolders, "TRAIN")]
 
 ## Get all results ----
@@ -31,7 +31,7 @@ for (subfolder in subfolders) {
   deployment <- basename(subfolder) #extract deployment name
   
   # Read the CSV file
-  csv_file <- list.files(paste0(subfolders,"\\Results\\"), pattern = paste0(deployment, "_FINAL.csv"), #find the presence csv
+  csv_file <- list.files(paste0(subfolder,"\\Results\\"), pattern = "_FINAL.csv", #find the presence csv
                          full.names = TRUE)
   
   df <- read_csv(csv_file) #read presence csv
