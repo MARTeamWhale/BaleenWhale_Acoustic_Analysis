@@ -15,11 +15,12 @@ second_sp = ""
 
 # RUN THESE ----
 
+## Set up ----
 # Set the path to your main folder
 main_folder <- r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\MAR)" # direct to all deployments
 
 # List all subfolders
-subfolders <- list.dirs(main_folder, full.names = TRUE, recursive = FALSE)#list all subfolders (aka Validation, Results)
+subfolders <- list.files(main_folder, full.names = TRUE)#list all subfolders (aka Validation, Results)
 subfolders <-subfolders[!str_detect(subfolders, "TRAIN")]
 
 ## Get all results ----
@@ -33,7 +34,7 @@ for (subfolder in subfolders) {
   deployment <- basename(subfolder) #extract deployment name
   
   # Read the CSV file
-  csv_file <- list.files(paste0(subfolders,"\\Results\\"), pattern = "FINAL.csv", #find the presence csv
+  csv_file <- list.files(paste0(subfolders,"\\Results\\"), pattern = paste0(deployment, "_DPA_MB_Annotations_FINAL.csv"), #find the presence csv
                          full.names = TRUE)
   
   df <- read_csv(csv_file) #read presence csv
@@ -176,7 +177,10 @@ fig.results <- day.results %>%
                             days_detect = "Presence, Detected by Target Species Detector",
                             days_nodetect = "Presence, Not Detected by Target Species Detector",
                             days_seidetect = "Presence, Detected by Secondary Species Detector")) %>% 
-  mutate(detection = factor(detection, levels = c("Presence, Not Detected by Target Species Detector","Presence, Detected by Secondary Species Detector", "Presence, Detected by Target Species Detector"))) 
+  mutate(detection = factor(detection,
+                            levels = c("Presence, Detected by Target Species Detector",
+                                       "Presence, Not Detected by Target Species Detector",
+                                       "Presence, Detected by Secondary Species Detector"))) 
 
 fig.results <- fig.results%>% 
   filter(!(sp_code ==second_sp & detection %in% c("Presence, Detected by Target Species Detector","Presence, Not Detected by Target Species Detector"))) %>% 
@@ -203,14 +207,20 @@ for (i in years) {
   p <-ggplot()+
     
     geom_bar_pattern(data = year.fig.results, aes(x = station, y = days, fill = sp_code, pattern = detection, pattern_fill=sp_code), 
-                     stat= 'identity', position="stack",
+                     stat= 'identity', position_stack(reverse = TRUE),
                      pattern_fill = "black",         # Color of the stripe lines
                      pattern_angle = 45,
                      pattern_density = 0.1,
                      pattern_spacing = 0.01,
                      pattern_key_scale_factor = 0.6)+
     
-    scale_pattern_manual(values = c("Presence, Detected by Target Species Detector" = "none", "Presence, Detected by Secondary Species Detector"="none", "Presence, Not Detected by Target Species Detector" = "stripe")) +
+    scale_pattern_manual(
+      values = c("Presence, Detected by Target Species Detector" = "none",
+                 "Presence, Detected by Secondary Species Detector" = "none",
+                 "Presence, Not Detected by Target Species Detector" = "stripe"),
+      breaks = c("Presence, Detected by Secondary Species Detector",
+                 "Presence, Not Detected by Target Species Detector",
+                 "Presence, Detected by Target Species Detector")) +
     scale_fill_manual(values = cols) +
     scale_pattern_fill_manual(values = cols) +
     
@@ -232,22 +242,20 @@ for (i in years) {
           panel.border = element_rect(fill = NA, colour = "black"),
           plot.margin = margin(0.1,0.1,0.1,0.1,"cm")) +
     
-    guides(fill = "none", pattern = guide_legend(
+    guides(fill = "none",pattern = guide_legend(
       title = "",
       override.aes = list(
-        fill = c("Presence, Detected by Target Species Detector" = cols[single_sp],
-                 "Presence, Detected by Secondary Species Detector" = cols[second_sp],
-                 "Presence, Not Detected by Target Species Detector" = cols[single_sp]),
-        pattern_fill = c("Presence, Detected by Target Species Detector" = cols[single_sp],
-                         "Presence, Detected by Secondary Species Detector" = cols[second_sp],
-                         "Presence, Not Detected by Target Species Detector" = cols[single_sp]),
+        fill = c(cols[second_sp],  # Secondary detector (top)
+                 cols[single_sp],  # Not detected (middle)
+                 cols[single_sp]),   # Target detector (bottom)),
+        pattern_fill = c(cols[second_sp],
+                         cols[single_sp],
+                         cols[single_sp]),
         pattern_colour = "black")))
   
   print(p)
   
-  plotname <- paste0(i,"_",single_sp,"_singlevmulti_sei.png")
+  plotname <- paste0(i,"_",single_sp,"_singlevmulti_",second_sp,".png")
   
   ggsave(here('Miscellaneous_scripts', 'Single_v_MultiSpecies','output_figures',plotname),p, width = 9.5, height =  4.5, units = "in" )
 }
-
-
