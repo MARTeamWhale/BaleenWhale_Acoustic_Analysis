@@ -9,6 +9,9 @@ deployment_code <- "STN_YYYY_MM" # input deployment code
 
 data_source <- ""  # MAR if from any DFO-MAR projects, otherwise code for the folder 
 
+#SDpecify if separate NARW detection validation was done
+separate.narw <- FALSE
+
 #Specify if Minke log exists
 include.minke <- TRUE
 
@@ -31,8 +34,10 @@ metadata <- metadata.in %>%
 
 ##Import all results----
 
+if(separate.narw == TRUE) {
 narw.in <- list.files(folder_path, pattern = "matlab.xlsx", full.names = TRUE) %>% 
   read_excel(sheet=1)
+}
 
 big4.in <- list.files(folder_path, pattern = "FINAL.csv", full.names = TRUE) %>% 
   read_csv()
@@ -47,6 +52,7 @@ if(include.minke == TRUE){
 ## Remove incorrects, non-animal detections, format----
 
 ##NARW----
+if(separate.narw == TRUE) {
 narw <-narw.in %>% 
   filter(Class_MATLAB != "Incorrect") %>% 
   mutate(detecdate = as_date(`SigStartDateTime`),
@@ -65,6 +71,9 @@ narw <-narw.in %>%
   select(!c(definite, possible)) %>% 
   mutate(callcat= "UP", 
          calltype = "U", .after=species)
+} else {
+  narw <- data.frame(detecdate=as.Date(character()),species = character(),callcat = character(),calltype = character(),presence = character())
+}
 
 ## Big4----
 
@@ -116,23 +125,17 @@ minke <-minke.in %>%
                               definite==0 & possible==0 ~ 'N')) %>% 
   select(!c(definite, possible))
 
+} else {
+  minke <- data.frame(detecdate=as.Date(character()),species = character(),callcat = character(),calltype = character(),presence = character())
 }
 
 # Compile all together ----
 
- if (include.minke == TRUE){
 baleen.daily <- rbind(big4,narw,minke) %>% 
   group_by_all() %>% 
   summarise() %>% 
   ungroup %>% 
   arrange(detecdate,species)
-} else {
-baleen.daily <- rbind(big4,narw) %>% 
-    group_by_all() %>% 
-    summarise() %>% 
-    ungroup %>% 
-    arrange(detecdate,species)
-}
 
 # remove days not included in effort (based on full 24-hour recordings)
 
