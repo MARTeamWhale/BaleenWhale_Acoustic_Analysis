@@ -30,7 +30,7 @@ annotation_date <- ""
 
 # specify target species:
 # BmT	= Blue whale tonal  BmA	= Blue whale audible   Bp	= Fin whale     
-# Bb	= Sei whale     Mn	= Humpback whale
+# Bb	= Sei whale     Mn	= Humpback whale    Eg = Right whale
 
 sp_name <- ""
 
@@ -44,9 +44,9 @@ tier <- ""
 ######## PROCESS (no need to modify the lines below) ########
 # 0) pre-set up
 
-sp_table <- tibble(sp_names = c("BmA","BmT","Bp","Bb","Mn", "Mn"),
-                    sp_codes= c("BW","BW","FW","SW","HB", "HB"),
-                    sp_calls = c("A","IF","IS","FF", "NS","SG"))
+sp_table <- tibble(sp_names = c("BmA","BmT","Bp","Bb","Mn", "Mn", "Eg"),
+                    sp_codes= c("BW","BW","FW","SW","HB", "HB", "RW"),
+                    sp_calls = c("A","IF","IS","FF", "NS","SG", "UP"))
 
 sp_code <- sp_table %>% filter(sp_names == sp_name) %>% pull(sp_codes) %>% unique()
 
