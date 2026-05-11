@@ -201,14 +201,14 @@ files_Mn3 <- detectionsALL %>%
 
 ## Right Whale
 
+files_Eg2 <- detectionsALL %>%
+  filter(Species == "Eg", MD2 !=0)%>%
+  select(Filename)%>%
+  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
+                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Eg2.csv"), col_names = FALSE)
+
 files_Eg3 <- detectionsALL %>%
   filter(Species == "Eg", MD3 !=0)%>%
   select(Filename)%>%
   write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
                    r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Eg3.csv"), col_names = FALSE)
-
-files_Eg4 <- detectionsALL %>%
-  filter(Species == "Eg", MD4 !=0)%>%
-  select(Filename)%>%
-  write_csv(paste0(r"(R:\Science\CetaceanOPPNoise\CetaceanOPPNoise_5\BaleenWhale_AcousticAnalysis\Deployments\)",data_source,"\\",deployment_code,
-                   r"(\Validation\ArkLite_Inputs\)",deployment_code,"_Eg4.csv"), col_names = FALSE)
