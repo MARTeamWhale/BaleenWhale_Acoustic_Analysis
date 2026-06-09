@@ -36,7 +36,7 @@ sp_name <- ""
 
 #specify the tier of a species to validate:
 # Blue whale tonal: 3 or 4  Blue whale audible: 2 or 4   Fin Whale: 2 or 3  
-# Sei Whale: 2 or 4   Humpback Whale: 2 or 3
+# Sei Whale: 2 or 4   Humpback Whale: 2 or 3   Right whale: 2 or 3
 
 tier <- ""
 

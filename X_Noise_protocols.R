@@ -33,7 +33,7 @@ wav_folder <-  r"(PATH TO WAV FILES HERE)" #copy file path to recording folder o
 sp_name <- "Bm"
 
 #specify the tier of a species to validate:
-# Blue whale tonal: 3 or 4  Blue whale audible: 2 or 4   Fin Whale: 2 or 3  Sei Whale: 2 or 4   Humpback Whale: 2 or 3
+# Blue whale tonal: 3 or 4  Blue whale audible: 2 or 4   Fin Whale: 2 or 3  Sei Whale: 2 or 4   Humpback Whale: 2 or 3   Right whale: 2 or 3
 
 tier <- "#"
 
